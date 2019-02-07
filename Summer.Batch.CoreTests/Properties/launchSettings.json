@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Summer.Batch.CoreTests": {
+      "commandName": "Project",
+      "workingDirectory": "$(SolutionDir)\\."
+    }
+  }
+}
