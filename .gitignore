@@ -136,3 +136,10 @@ Summer.Batch.Infrastructure/obj/Summer.Batch.Infrastructure.csproj.nuget.cache
 Summer.Batch.Infrastructure/obj/Summer.Batch.Infrastructure.csproj.nuget.g.props
 Summer.Batch.Common/obj/project.assets.json
 Summer.Batch.Common/obj/Summer.Batch.Common.csproj.nuget.cache
+Summer.Batch.Common/obj/Summer.Batch.Common.csproj.nuget.g.targets
+Summer.Batch.Core/obj/Summer.Batch.Core.csproj.nuget.g.targets
+Summer.Batch.CoreTests/obj/Summer.Batch.CoreTests.csproj.nuget.g.targets
+Summer.Batch.Data/obj/Summer.Batch.Data.csproj.nuget.g.targets
+Summer.Batch.Extra/obj/Summer.Batch.Extra.csproj.nuget.g.targets
+Summer.Batch.Infrastructure/obj/Debug/netcoreapp2.2/Summer.Batch.Infrastructure.csprojAssemblyReference.cache
+Summer.Batch.Infrastructure/obj/Summer.Batch.Infrastructure.csproj.nuget.g.targets
