@@ -26,7 +26,7 @@ namespace Summer.Batch.Extra
     /// </summary>
     public class AbstractExecutionListener : IStepExecutionListener
     {
-
+        private const string Restart = "batch.restart";
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
         /// <summary>
@@ -68,8 +68,8 @@ namespace Summer.Batch.Extra
         public virtual void BeforeStep(StepExecution stepExecution)
         {
             RegisterContexts(stepExecution);
-            Preprocess();
-
+            if (!stepExecution.ExecutionContext.ContainsKey(Restart))
+                Preprocess();
         }
 
         /// <summary>
@@ -83,16 +83,16 @@ namespace Summer.Batch.Extra
             ExitStatus returnStatus = stepExecution.ExitStatus;
             if (!"FAILED".Equals(returnStatus.ExitCode))
             {
-                try
-                {
-                    returnStatus = Postprocess();
-                }
-                catch (Exception e)
-                {
-                    // Need to catch exception to log and set status to FAILED, while
-                    // Spring batch would only log and keep the status COMPLETED
-                    Logger.Error(e, "Exception during postprocessor");
-                    returnStatus = ExitStatus.Failed;
+                        try
+                        {
+                            returnStatus = Postprocess();
+                        }
+                        catch (Exception e)
+                        {
+                            // Need to catch exception to log and set status to FAILED, while
+                            // Spring batch would only log and keep the status COMPLETED
+                            Logger.Error(e, "Exception during postprocessor");
+                            returnStatus = ExitStatus.Failed;
                 }
             }
             return returnStatus;
