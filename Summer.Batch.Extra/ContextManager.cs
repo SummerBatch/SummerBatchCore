@@ -13,6 +13,8 @@
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
 using Summer.Batch.Infrastructure.Item;
+using System;
+using System.Collections.Generic;
 
 namespace Summer.Batch.Extra
 {
@@ -26,6 +28,15 @@ namespace Summer.Batch.Extra
         /// cache
         /// </summary>
         public ExecutionContext Context { get; set; }
+
+        private List<string> SpecificKeys = new List<string>()
+        {
+            "FlatFileItemWriter",
+            "batch.writeInProcess",
+            "batch.restart",
+            "read.count",
+            "batch.bufferReader",
+        };
 
         /// <summary>
         /// Store an object inside the cache
@@ -41,6 +52,13 @@ namespace Summer.Batch.Extra
             }
             else
             {
+                foreach (string s in SpecificKeys)
+                {
+                    if (strKey.Contains(s))
+                    {
+                        throw new Exception("Key contains \"" + s + "\" are not allowed to put in the StepContextManager");
+                    }
+                }
                 Context.Put(strKey, record);
             }
         }
