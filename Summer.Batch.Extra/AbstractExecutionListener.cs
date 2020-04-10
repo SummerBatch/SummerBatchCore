@@ -15,6 +15,7 @@
 using System;
 using Microsoft.Practices.Unity;
 using NLog;
+using Summer.Batch.Common.Transaction;
 using Summer.Batch.Core;
 
 
@@ -83,6 +84,9 @@ namespace Summer.Batch.Extra
             ExitStatus returnStatus = stepExecution.ExitStatus;
             if (!"FAILED".Equals(returnStatus.ExitCode))
             {
+                using (var scope = TransactionScopeManager.CreateScope())
+                {
+                    {
                         try
                         {
                             returnStatus = Postprocess();
@@ -92,7 +96,11 @@ namespace Summer.Batch.Extra
                             // Need to catch exception to log and set status to FAILED, while
                             // Spring batch would only log and keep the status COMPLETED
                             Logger.Error(e, "Exception during postprocessor");
-                            returnStatus = ExitStatus.Failed;
+                            stepExecution.UpgradeStatus(BatchStatus.Failed);
+                            throw;
+                        }
+                        scope.Complete();
+                    }
                 }
             }
             return returnStatus;
