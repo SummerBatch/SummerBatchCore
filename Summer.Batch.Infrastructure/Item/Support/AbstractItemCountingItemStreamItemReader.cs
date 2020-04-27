@@ -159,8 +159,8 @@ namespace Summer.Batch.Infrastructure.Item.Support
             if (SaveState)
             {
                 Assert.NotNull(executionContext, "executionContext must not be null");
-                UpdateForBufferedReader(executionContext);
                 executionContext.PutInt(GetExecutionContextKey(ReadCount), CurrentItemCount);
+                UpdateForBufferedReader(executionContext);
                 if (_maxItemCount < int.MaxValue)
                 {
                     executionContext.PutInt(GetExecutionContextKey(ReadCountMax), _maxItemCount);
