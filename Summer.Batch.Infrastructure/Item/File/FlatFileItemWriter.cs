@@ -57,6 +57,7 @@ namespace Summer.Batch.Infrastructure.Item.File
         private const string WrittenStatisticsName = "written";
         private const string WriteInProcess = "batch.writeInProcess";
         private const string ProcessWriterPreFix = "WriteInProcess/";
+        private const string Restart = "batch.restart";
         private readonly Logger _logger = LogManager.GetCurrentClassLogger();
 
         /// <summary>
@@ -193,19 +194,22 @@ namespace Summer.Batch.Infrastructure.Item.File
 
             if (_initialized) { return; }
 
-            if ((executionContext.ContainsKey(WriteInProcess) && (bool)executionContext.Get(WriteInProcess)))
+            if (executionContext.ContainsKey(Restart) && (bool)executionContext.Get(Restart))
             {
-                executionContext.Put(WriteInProcess, false);
-                if (executionContext.ContainsKey(ProcessWriterPreFix + GetExecutionContextKey(RestartDataName)))
+                if ((executionContext.ContainsKey(WriteInProcess) && (bool)executionContext.Get(WriteInProcess)))
                 {
-                    RestoreWriteInProcessFrom(executionContext);
+                    executionContext.Put(WriteInProcess, false);
+                    if (executionContext.ContainsKey(ProcessWriterPreFix + GetExecutionContextKey(RestartDataName)))
+                    {
+                        RestoreWriteInProcessFrom(executionContext);
+                    }
                 }
-            }
-            else
-            {
-                if (executionContext.ContainsKey(GetExecutionContextKey(RestartDataName)))
+                else
                 {
-                    RestoreFrom(executionContext);
+                    if (executionContext.ContainsKey(GetExecutionContextKey(RestartDataName)))
+                    {
+                        RestoreFrom(executionContext);
+                    }
                 }
             }
            
