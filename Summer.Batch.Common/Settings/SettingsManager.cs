@@ -14,6 +14,7 @@
 //   limitations under the License.
 using Microsoft.Extensions.Configuration;
 using System;
+using System.Configuration;
 
 namespace Summer.Batch.Common.Settings
 {
@@ -69,7 +70,19 @@ namespace Summer.Batch.Common.Settings
         /// <returns>the connection string, or null if it was not found</returns>
         public String GetConnectionString(string name)
         {
-            var result = _configuration.GetConnectionString(name);
+            var result = _configuration["add:" + name + ":connectionString"];
+            //var result = _configuration.GetConnectionString(name);
+            return result;
+        }
+        /// <summary>
+        /// Retrives a connection string by its name.
+        /// </summary>
+        /// <param name="name">the name of the connection string to retrieve</param>
+        /// <returns>the connection string, or null if it was not found</returns>
+        public String GetProviderName(string name)
+        {
+            var result = _configuration["add:" + name + ":providerName"];
+            //var result = _configuration.GetConnectionString(name);
             return result;
         }
     }
