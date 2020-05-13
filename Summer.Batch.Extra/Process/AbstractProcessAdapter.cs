@@ -28,7 +28,7 @@ namespace Summer.Batch.Extra.Process
     public class AbstractProcessAdapter<T> : IProcessAdapter where T : class
     {
         private const string ReadCount = "read.count";
-
+        private const string WriteInProcess = "batch.writeInProcess";
         /// <summary>
         /// Step context manager property.
         /// </summary>
@@ -88,6 +88,7 @@ namespace Summer.Batch.Extra.Process
         /// </summary>
         public void InitStream()
         {
+            StepContextManager.Context.Put(WriteInProcess, true);
             if (!_initDone)
             {
                 if (_stream != null)
@@ -96,6 +97,14 @@ namespace Summer.Batch.Extra.Process
                     _initDone = true;
                 }
             }
+        }
+
+        /// <summary>
+        /// update stream.
+        /// </summary>
+        public void UpdateStream()
+        {
+            _stream.Update(StepContextManager.Context);
         }
 
         /// <summary>

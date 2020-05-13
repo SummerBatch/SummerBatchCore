@@ -1,14 +1,14 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <Target Name="CopyAppConfig" AfterTargets="Build" DependsOnTargets="Build">
     <CreateItem Include="$(OutputPath)$(AssemblyName).dll.config">
-        <Output TaskParameter="Include" ItemName="FilesToCopy"/>
+        <Output TaskParameter="Include" ItemName="FilesToCopy" />
     </CreateItem>
     <Copy SourceFiles="@(FilesToCopy)" DestinationFiles="$(OutputPath)testhost.dll.config" />
   </Target>
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,15 +18,16 @@
   <ItemGroup>
     <PackageReference Include="Furysoft.NDbUnit.Core" Version="1.7.0" />
     <PackageReference Include="Furysoft.NDbUnit.SqlClient" Version="1.7.0" />
-    <PackageReference Include="MessagePack.UnityShims" Version="1.7.3.4" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="2.2.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Xml" Version="2.2.0" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.9.0" />
-    <PackageReference Include="MSTest.TestAdapter" Version="1.3.2" />
-    <PackageReference Include="MSTest.TestFramework" Version="1.3.2" />
+    <PackageReference Include="MessagePack.UnityShims" Version="2.1.115" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="3.1.3" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Xml" Version="3.1.3" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.6.1" />
+    <PackageReference Include="MSTest.TestAdapter" Version="2.1.1" />
+    <PackageReference Include="MSTest.TestFramework" Version="2.1.1" />
+    <PackageReference Include="NDbUnit.Core" Version="1.6.8" />
     <PackageReference Include="NLog" Version="5.0.0-beta11" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="4.5.0" />
-    <PackageReference Include="System.Text.Encoding.CodePages" Version="4.5.0" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="4.7.0" />
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="4.7.0" />
   </ItemGroup>
 
   <ItemGroup>
