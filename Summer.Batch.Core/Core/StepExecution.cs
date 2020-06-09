@@ -16,6 +16,7 @@
 
 using Summer.Batch.Common.Util;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -248,7 +249,8 @@ namespace Summer.Batch.Core
         /// </summary>
         public int FilterCount { get; set; }
 
-        private readonly IList<Exception> _failureExceptions = new List<Exception>();
+        [NonSerialized]
+        private readonly IProducerConsumerCollection<Exception> _failureExceptions = new ConcurrentBag<Exception>();
 
         /// <summary>
         ///  Constructor with mandatory properties.
@@ -379,7 +381,7 @@ namespace Summer.Batch.Core
         {
             if (!_failureExceptions.Contains(exception))
             {
-                _failureExceptions.Add(exception);
+                _failureExceptions.TryAdd(exception);
             }
             
         }

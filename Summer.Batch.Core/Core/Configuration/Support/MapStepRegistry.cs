@@ -36,6 +36,7 @@ using System.Collections.Generic;
 using Summer.Batch.Core.Launch;
 using Summer.Batch.Core.Step;
 using Summer.Batch.Common.Util;
+using System.Collections.Concurrent;
 
 namespace Summer.Batch.Core.Configuration.Support
 {
@@ -46,8 +47,8 @@ namespace Summer.Batch.Core.Configuration.Support
     public class MapStepRegistry : IStepRegistry
     {
 
-        private readonly Dictionary<string, IDictionary<string, IStep>> _map =
-            new Dictionary<string, IDictionary<string, IStep>>();
+        private readonly ConcurrentDictionary<string, IDictionary<string, IStep>> _map =
+            new ConcurrentDictionary<string, IDictionary<string, IStep>>();
 
         #region IStepRegistry methods implementation
 

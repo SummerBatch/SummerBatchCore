@@ -34,6 +34,7 @@
 
 using Summer.Batch.Common.Util;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -45,8 +46,8 @@ namespace Summer.Batch.Core.Repository.Dao
     /// </summary>
     public class MapStepExecutionDao : IStepExecutionDao
     {
-        private readonly IDictionary<long?, IDictionary<long?, StepExecution>> _executionsByJobExecutionId = new Dictionary<long?, IDictionary<long?, StepExecution>>();
-        private readonly IDictionary<long?, StepExecution> _executionsByStepExecutionId = new Dictionary<long?, StepExecution>();
+        private readonly IDictionary<long?, IDictionary<long?, StepExecution>> _executionsByJobExecutionId = new ConcurrentDictionary<long?, IDictionary<long?, StepExecution>>();
+        private readonly IDictionary<long?, StepExecution> _executionsByStepExecutionId = new ConcurrentDictionary<long?, StepExecution>();
         private long _currentId;
 
         /// <summary>

@@ -35,6 +35,7 @@
 
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -60,7 +61,14 @@ namespace Summer.Batch.Infrastructure.Item
         /// <summary>
         /// Inner storage.
         /// </summary>
+        [NonSerialized]
         private readonly IDictionary<string, Object> _map;
+
+        /// <summary>
+        /// Storage to be used only for serialization
+        /// This was added as .NetCore 3.1 does not support Serialization of ConcurrentDictionary using BinaryFormatter
+        /// </summary>
+        public KeyValuePair<string, Object>[] MapForSerialization { get; set; }
 
         /// <summary>
         /// Inner storage as array.
@@ -75,7 +83,7 @@ namespace Summer.Batch.Infrastructure.Item
         /// </summary>
         public ExecutionContext()
         {
-            _map = new Dictionary<string, Object>();
+            _map = new ConcurrentDictionary<string, Object>();
         }
 
 
@@ -93,7 +101,7 @@ namespace Summer.Batch.Infrastructure.Item
         /// <param name="map"></param>
         public ExecutionContext(IDictionary<string, Object> map)
         {
-            _map = new Dictionary<string, Object>(map);
+            _map = new ConcurrentDictionary<string, Object>(map);
         }
 
         /// <summary>
@@ -114,6 +122,23 @@ namespace Summer.Batch.Infrastructure.Item
                 _map.Add(entry);
             }
         }
+
+        /// <summary>
+        /// To be called only from Deserialization to copy the contents back to ConcurrentDictionary
+        /// </summary>
+        /// <param name="entries"></param>
+        /// <param name="dirty"></param>
+        public ExecutionContext(KeyValuePair<string, Object>[] entries, bool dirty)
+        {
+            _map = new ConcurrentDictionary<string, Object>();
+            _dirty = dirty;
+            MapForSerialization = entries;
+            foreach (KeyValuePair<string, Object> entry in entries)
+            {
+                _map.Add(entry);
+            }
+        }
+
 
         /// <summary>
         /// Store a string value in context.

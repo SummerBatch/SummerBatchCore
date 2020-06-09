@@ -62,7 +62,12 @@ namespace Summer.Batch.Core.Repository.Dao
         /// <returns></returns>
         private static ExecutionContext Copy(ExecutionContext original)
         {
-            return original.Serialize().Deserialize<ExecutionContext>();
+            original.MapForSerialization = original.EntrySet;
+            var serializedContext = original.Serialize();
+
+            ExecutionContext serializedData = serializedContext.Deserialize<ExecutionContext>();
+            ExecutionContext context = new ExecutionContext(serializedData.MapForSerialization, serializedData.Dirty);
+            return context;
         }
 
         #region IExecutionContextDao methods implementation

@@ -186,6 +186,7 @@ namespace Summer.Batch.Core.Repository.Dao
         {
             try
             {
+                context.MapForSerialization = context.EntrySet;
                 return context.Serialize();
             }
             catch (SerializationException e)
@@ -240,7 +241,9 @@ namespace Summer.Batch.Core.Repository.Dao
 
             try
             {
-                return serializedContext.Deserialize<ExecutionContext>();
+                ExecutionContext serializedData = serializedContext.Deserialize<ExecutionContext>();
+                ExecutionContext context = new ExecutionContext(serializedData.MapForSerialization, serializedData.Dirty);
+                return context;
             }
             catch (SerializationException e)
             {

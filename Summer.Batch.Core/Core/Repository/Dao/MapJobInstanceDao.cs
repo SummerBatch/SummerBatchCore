@@ -38,6 +38,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Collections.Concurrent;
 
 namespace Summer.Batch.Core.Repository.Dao
 {
@@ -46,7 +47,7 @@ namespace Summer.Batch.Core.Repository.Dao
     /// </summary>
     public class MapJobInstanceDao : IJobInstanceDao
     {
-        private readonly IDictionary<string, JobInstance> _jobInstances = new Dictionary<string, JobInstance>();
+        private readonly IDictionary<string, JobInstance> _jobInstances = new ConcurrentDictionary<string, JobInstance>();
         private readonly IJobKeyGenerator<JobParameters> _jobKeyGenerator = new DefaultJobKeyGenerator();
         private long _currentId;
 

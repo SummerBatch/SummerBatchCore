@@ -14,6 +14,7 @@
 //   limitations under the License.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -31,7 +32,7 @@ namespace Summer.Batch.Data
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
         private static readonly IDictionary<string, IDatabaseExtension> Extensions =
-            new Dictionary<string, IDatabaseExtension>();
+            new ConcurrentDictionary<string, IDatabaseExtension>();
 
         /// <summary>
         /// Static constructor that uses reflection to find all implementation of

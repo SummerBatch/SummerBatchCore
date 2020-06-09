@@ -63,7 +63,12 @@ namespace Summer.Batch.Core.Repository.Dao
         /// <returns></returns>
         private static JobExecution Copy(JobExecution original)
         {
-            return original.Serialize().Deserialize<JobExecution>();
+            original.StepExecutionsSerialization = original.StepExecutions;
+            var serializedContext = original.Serialize();
+
+            JobExecution serializedData = serializedContext.Deserialize<JobExecution>();
+            JobExecution context = new JobExecution(serializedData, serializedData.StepExecutionsSerialization);
+            return context;
         }
 
         #region IJobExecutionDao methods implementation

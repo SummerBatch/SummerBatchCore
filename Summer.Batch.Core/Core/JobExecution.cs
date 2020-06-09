@@ -33,6 +33,7 @@
  */
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -59,8 +60,11 @@ namespace Summer.Batch.Core
         /// </summary>
         public JobInstance JobInstance { get; set; }
 
-        private readonly IList<StepExecution> _stepExecutions = new List<StepExecution>();
-        
+        [NonSerialized]
+        private readonly IProducerConsumerCollection<StepExecution> _stepExecutions = new ConcurrentBag<StepExecution>();
+
+        public ICollection<StepExecution> StepExecutionsSerialization { get; set; }
+
         /// <summary>
         /// Step executions.
         /// </summary>
@@ -254,6 +258,37 @@ namespace Summer.Batch.Core
         }
 
         /// <summary>
+        /// Custom constructor used for serialize/deserialize
+        /// </summary>
+        /// <param name="original"></param>
+        /// <param name="stepExecutions"></param>
+        public JobExecution(JobExecution original, ICollection<StepExecution> stepExecutions)
+        {
+            JobParameters = original.JobParameters;
+            JobInstance = original.JobInstance;
+            _status = original.Status;
+            StartTime = original.StartTime;
+            CreateTime = original.CreateTime;
+            EndTime = original.EndTime;
+            LastUpdated = original.LastUpdated;
+            _exitStatus = original.ExitStatus;
+            _executionContext = original.ExecutionContext;
+            _failureExceptions = original.FailureExceptions;
+            _jobConfigurationName = original.JobConfigurationName;
+            Id = original.Id;
+            Version = original.Version;
+            _stepExecutions = new ConcurrentBag<StepExecution>();
+            if (stepExecutions != null)
+            {
+                foreach (StepExecution item in stepExecutions)
+                {
+                    _stepExecutions.TryAdd(item);
+                }
+            }
+
+        }
+
+        /// <summary>
         /// Because a JobExecution isn't valid unless the job is set, this
         /// constructor is the only valid one from a modeling point of view.
         /// </summary>
@@ -340,7 +375,7 @@ namespace Summer.Batch.Core
             StepExecution stepExecution = new StepExecution(stepName, this);
             if (!_stepExecutions.Contains(stepExecution))
             {
-                _stepExecutions.Add(stepExecution);
+                _stepExecutions.TryAdd(stepExecution);
             }
             return stepExecution;
         }
@@ -388,7 +423,7 @@ namespace Summer.Batch.Core
         {
             if (!_stepExecutions.Contains(stepExecution))
             {
-                _stepExecutions.Add((stepExecution));
+                _stepExecutions.TryAdd((stepExecution));
             }
         }
 
@@ -434,11 +469,11 @@ namespace Summer.Batch.Core
                 foreach (StepExecution item in stepExecutions)
                 {
                     StepExecution removedItem = item;
-                    _stepExecutions.Remove(removedItem);
+                    _stepExecutions.TryTake(out removedItem);
                 }
                 foreach (StepExecution item in stepExecutions)
                 {
-                    _stepExecutions.Add(item);
+                    _stepExecutions.TryAdd(item);
                 }
             }
         }
