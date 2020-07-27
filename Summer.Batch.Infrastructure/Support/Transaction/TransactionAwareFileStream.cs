@@ -17,6 +17,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Transactions;
 using Summer.Batch.Common.Transaction;
+using NLog;
+using System.Threading;
 
 
 namespace Summer.Batch.Infrastructure.Support.Transaction
@@ -27,8 +29,11 @@ namespace Summer.Batch.Infrastructure.Support.Transaction
     public class TransactionAwareFileStream : FileStream, ISinglePhaseNotification
     {
 
+        private Semaphore _pool = new Semaphore(1, 1);
+        private bool _disposed = false;
         private bool _shouldClose;
         private readonly List<byte> _internalBuffer;
+        private readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
         /// <summary>
         /// Custom constructor with path and FileMode.
@@ -135,11 +140,21 @@ namespace Summer.Batch.Infrastructure.Support.Transaction
         /// </summary>
         public override void Flush()
         {
+            _pool.WaitOne();
             //Flush is permitted only on non-transaction context
             if (!IsTransactionActive())
             {
-                base.Flush();
+                if (!_disposed)
+                {
+                    base.Flush();
+                }
+                else
+                {
+                    Logger.Trace("Flush - writer already disposed by transaction.");
+                }
+
             }
+            _pool.Release();
         }
 
         /// <summary>
@@ -148,15 +163,17 @@ namespace Summer.Batch.Infrastructure.Support.Transaction
         private void Complete()
         {
             //write buffer
-            base.Write(_internalBuffer.ToArray(),0,_internalBuffer.Count);
+            Write(_internalBuffer.ToArray(), 0, _internalBuffer.Count);
             _internalBuffer.Clear();
             //flush
-            base.Flush();
+            Logger.Trace("Complete - base.Flush()");
+            Flush();
             if (_shouldClose)
             {
-                base.Dispose(true);
+                Logger.Trace("Complete - base.Dispose(true)");
+                Dispose(true);
             }
-            
+
         }
 
         /// <summary>
@@ -165,18 +182,35 @@ namespace Summer.Batch.Infrastructure.Support.Transaction
         /// <param name="disposing"></param>
         protected override void Dispose(bool disposing)
         {
+            Logger.Trace("WaitOne - before waitone");
+            _pool.WaitOne();
+            Logger.Trace("WaitOne - after waitone");
             if (disposing)
             {
                 TransactionScopeManager.UnregisterResource(this);
                 if (IsTransactionActive())
                 {
+                    Logger.Trace("Dispose - _shouldClose = true");
                     _shouldClose = true;
                 }
                 else
                 {
-                    base.Dispose(true);
+                    if (!_disposed)
+                    {
+                        Logger.Trace("Dispose - base.Dispose(true)");
+                        _disposed = true;
+                        base.Dispose(true);
+                    }
+                    else
+                    {
+                        Logger.Trace("Dispose - already disposed");
+                    }
+
                 }
-            }            
+            }
+            Logger.Trace("Release - before release");
+            _pool.Release();
+            Logger.Trace("Release - after release");
         }
     }
 }
