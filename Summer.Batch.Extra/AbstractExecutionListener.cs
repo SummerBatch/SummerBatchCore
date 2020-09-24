@@ -13,6 +13,8 @@
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
 using System;
+using System.Reflection;
+using System.Transactions;
 using Microsoft.Practices.Unity;
 using NLog;
 using Summer.Batch.Common.Transaction;
@@ -100,8 +102,10 @@ namespace Summer.Batch.Extra
             ExitStatus returnStatus = stepExecution.ExitStatus;
             if (!"FAILED".Equals(returnStatus.ExitCode))
             {
-                using (var scope = TransactionScopeManager.CreateScope())
+                MethodInfo post = this.GetType().GetMethod("Postprocess", BindingFlags.Instance | BindingFlags.NonPublic);
+                if (post.DeclaringType != typeof(AbstractExecutionListener))
                 {
+                    using (var scope = TransactionScopeManager.CreateScope())
                     {
                         try
                         {

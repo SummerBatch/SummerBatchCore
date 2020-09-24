@@ -16,6 +16,7 @@
 
 using Summer.Batch.Common.Util;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -151,6 +152,16 @@ namespace Summer.Batch.Core
             set { _writeSkipCount = value; }
         }
 
+        private volatile int _delayConfig;
+
+        /// <summary>
+        /// Read count.
+        /// </summary>
+        public int DelayConfig
+        {
+            get { return _delayConfig; }
+            set { _delayConfig = value; }
+        }
 
         // NOTE TMA : DateTime not supported as volatile by C#
         private long _startTime = DateTime.Now.Ticks;
@@ -248,7 +259,8 @@ namespace Summer.Batch.Core
         /// </summary>
         public int FilterCount { get; set; }
 
-        private readonly IList<Exception> _failureExceptions = new List<Exception>();
+        [NonSerialized]
+        private readonly IProducerConsumerCollection<Exception> _failureExceptions = new ConcurrentBag<Exception>();
 
         /// <summary>
         ///  Constructor with mandatory properties.
@@ -379,7 +391,7 @@ namespace Summer.Batch.Core
         {
             if (!_failureExceptions.Contains(exception))
             {
-                _failureExceptions.Add(exception);
+                _failureExceptions.TryAdd(exception);
             }
             
         }

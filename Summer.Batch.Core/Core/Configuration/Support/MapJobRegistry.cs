@@ -37,6 +37,7 @@ using Summer.Batch.Common.Util;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Collections.Concurrent;
 
 namespace Summer.Batch.Core.Configuration.Support
 {
@@ -45,7 +46,7 @@ namespace Summer.Batch.Core.Configuration.Support
     /// </summary>
     public class MapJobRegistry : IJobRegistry
     {
-        private readonly Dictionary<string, IJobFactory> _map = new Dictionary<string, IJobFactory>();
+        private readonly ConcurrentDictionary<string, IJobFactory> _map = new ConcurrentDictionary<string, IJobFactory>();
 
         #region IJobRegistry methods implementation
 
@@ -62,7 +63,7 @@ namespace Summer.Batch.Core.Configuration.Support
             IJobFactory value = null;
             if (!_map.TryGetValue(name, out value))
             {
-                _map.Add(name, jobFactory);
+                _map.TryAdd(name, jobFactory);
                 value = jobFactory;
             }
             if (value != jobFactory)

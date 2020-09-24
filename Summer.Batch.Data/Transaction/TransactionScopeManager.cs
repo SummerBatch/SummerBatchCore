@@ -19,6 +19,7 @@ using System.Transactions;
 using NLog;
 using Summer.Batch.Common.Transaction.Support;
 using System.Configuration;
+using System.Collections.Concurrent;
 
 namespace Summer.Batch.Common.Transaction
 {
@@ -34,7 +35,7 @@ namespace Summer.Batch.Common.Transaction
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
         private static readonly IDictionary<TransactionScope, IList<ITransactionSynchronization>> Synchronizations =
-            new Dictionary<TransactionScope, IList<ITransactionSynchronization>>();
+            new ConcurrentDictionary<TransactionScope, IList<ITransactionSynchronization>>();
         private readonly static ThreadLocal<ISet<IEnlistmentNotification>> Resources =
             new ThreadLocal<ISet<IEnlistmentNotification>>(() => new HashSet<IEnlistmentNotification>());
 

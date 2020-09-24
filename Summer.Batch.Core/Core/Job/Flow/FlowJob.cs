@@ -33,6 +33,7 @@
  */
 
 using Summer.Batch.Core.Step;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 
 namespace Summer.Batch.Core.Job.Flow
@@ -49,7 +50,7 @@ namespace Summer.Batch.Core.Job.Flow
         /// Flow property.
         /// </summary>
         public IFlow Flow { protected get; set; }
-        private readonly IDictionary<string, IStep> _stepMap = new Dictionary<string, IStep>();
+        private readonly IDictionary<string, IStep> _stepMap = new ConcurrentDictionary<string, IStep>();
         private volatile bool _initialized = false;
 
         /// <summary>
