@@ -43,6 +43,7 @@ using Summer.Batch.Infrastructure.Repeat;
 using Summer.Batch.Common.Util;
 using System;
 using Summer.Batch.Common.Factory;
+using Summer.Batch.Data;
 
 namespace Summer.Batch.Core.Step
 {
@@ -77,7 +78,9 @@ namespace Summer.Batch.Core.Step
             { return _startLimit; }
             set { _startLimit = value == 0 ? Int32.MaxValue : value; }
         }
-        
+
+        public RemoteChunking remoteChunking { get; set; }
+
         /// <summary>
         /// Job repository property.
         /// </summary>

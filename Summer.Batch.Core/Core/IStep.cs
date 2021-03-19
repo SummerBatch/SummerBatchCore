@@ -32,6 +32,8 @@
  * limitations under the License.
  */
 
+using Summer.Batch.Data;
+
 namespace Summer.Batch.Core
 {
     /// <summary>
@@ -60,6 +62,7 @@ namespace Summer.Batch.Core
 
         int DelayConfig { get; set; }
 
+        RemoteChunking remoteChunking { get; set; }
         /// <summary>
         /// Executes the step.
         /// </summary>

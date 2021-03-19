@@ -37,6 +37,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Practices.Unity;
 using Summer.Batch.Core.Repository;
+using Summer.Batch.Data;
 
 namespace Summer.Batch.Core.Step.Builder
 {
@@ -77,6 +78,11 @@ namespace Summer.Batch.Core.Step.Builder
         public int DelayConfig { get; set; }
 
         /// <summary>
+        /// The property of remotechunking
+        /// </summary>
+        public RemoteChunking _remoteChunking { get; set; }
+
+        /// <summary>
         /// Default constructor.
         /// </summary>
         /// <param name="container">the container used to resolve the step</param>
@@ -94,6 +100,15 @@ namespace Summer.Batch.Core.Step.Builder
             Name = name;
             StartLimit = int.MaxValue;
             DelayConfig = delayConfig;
+        }
+
+        protected AbstractStepBuilder(IUnityContainer container, string name, int delayConfig, RemoteChunking remoteChunking)
+        {
+            Container = container;
+            Name = name;
+            StartLimit = int.MaxValue;
+            DelayConfig = delayConfig;
+            _remoteChunking = remoteChunking;
         }
 
         /// <summary>
@@ -150,6 +165,12 @@ namespace Summer.Batch.Core.Step.Builder
                 new InjectionProperty("StartLimit", StartLimit),
                 new InjectionProperty("DelayConfig", DelayConfig)
             };
+
+            if (_remoteChunking != null)
+            {
+                injectionMembers.Add(new InjectionProperty("remoteChunking", _remoteChunking));
+            }
+
             injectionMembers.AddRange(_stepExecutionListeners.Select(listener =>
                 new InjectionMethod("RegisterStepExecutionListener", new ResolvedParameter(listener.Item1, listener.Item2))));
 

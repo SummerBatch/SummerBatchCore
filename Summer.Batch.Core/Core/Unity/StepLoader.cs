@@ -21,6 +21,7 @@ using Summer.Batch.Core.Step.Builder;
 using Summer.Batch.Core.Unity.Xml;
 using Summer.Batch.Common.TaskExecution;
 using Summer.Batch.Infrastructure.Item;
+using Summer.Batch.Data;
 
 namespace Summer.Batch.Core.Unity
 {
@@ -76,6 +77,16 @@ namespace Summer.Batch.Core.Unity
                 var builder = new SimpleStepBuilder(_container, _step.Id, inType, outType, Int32.Parse(_step.DelayConfig))
                      .Reader(_step.Chunk.Reader.Ref)
                     .Writer(_step.Chunk.Writer.Ref);
+
+                // To determine the master step and create remotechunking inject to the stepexecution
+                if (_step.RemoteChunking != null)
+                {
+                    RemoteChunking remoteChunking = new RemoteChunking(_step.RemoteChunking.HostName, _step.RemoteChunking.Master);
+                    builder = new SimpleStepBuilder(_container, _step.Id, inType, outType, Int32.Parse(_step.DelayConfig), remoteChunking)
+                                    .Reader(_step.Chunk.Reader.Ref)
+                                    .Writer(_step.Chunk.Writer.Ref);
+                }
+
                 if (_step.Chunk.Processor != null && !string.IsNullOrEmpty(_step.Chunk.Processor.Ref))
                 {
                     builder.Processor(_step.Chunk.Processor.Ref);

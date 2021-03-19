@@ -15,6 +15,7 @@
 #region using
 
 using Summer.Batch.Common.Util;
+using Summer.Batch.Data;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -161,6 +162,14 @@ namespace Summer.Batch.Core
         {
             get { return _delayConfig; }
             set { _delayConfig = value; }
+        }
+
+        private volatile RemoteChunking _remoteChunking;
+
+        public RemoteChunking remoteChunking
+        {
+            get { return _remoteChunking; }
+            set { _remoteChunking = value; }
         }
 
         // NOTE TMA : DateTime not supported as volatile by C#
