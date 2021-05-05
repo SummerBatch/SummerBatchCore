@@ -149,6 +149,7 @@ namespace Summer.Batch.Core.Step
             stepExecution.StartTime = DateTime.Now;
             stepExecution.BatchStatus = BatchStatus.Started;
             stepExecution.DelayConfig = DelayConfig;
+            stepExecution.remoteChunking = remoteChunking != null ? remoteChunking : null;
             JobRepository.Update(stepExecution);
 
             // Start with a default value that will be trumped by anything

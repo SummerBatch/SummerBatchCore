@@ -25,5 +25,11 @@ namespace Summer.Batch.Core.Core.Unity.Xml
         /// </summary>
         [XmlAttribute("port")]
         public int Port { get; set; }
+
+        /// <summary>
+        /// unique slave id.
+        /// </summary>
+        [XmlAttribute("slaveID")]
+        public string SlaveID { get; set; }
     }
 }

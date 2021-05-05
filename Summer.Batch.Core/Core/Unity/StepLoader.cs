@@ -82,6 +82,11 @@ namespace Summer.Batch.Core.Unity
                 if (_step.RemoteChunking != null)
                 {
                     RemoteChunking remoteChunking = new RemoteChunking(_step.RemoteChunking.HostName, _step.RemoteChunking.Master);
+                    // set slave id into the remotechunking object
+                    if (!_step.RemoteChunking.Master && _step.RemoteChunking.SlaveID != null)
+                    {
+                        remoteChunking.SlaveID = _step.RemoteChunking.SlaveID;
+                    }
                     builder = new SimpleStepBuilder(_container, _step.Id, inType, outType, Int32.Parse(_step.DelayConfig), remoteChunking)
                                     .Reader(_step.Chunk.Reader.Ref)
                                     .Writer(_step.Chunk.Writer.Ref);
