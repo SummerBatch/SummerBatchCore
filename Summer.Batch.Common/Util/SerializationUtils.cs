@@ -13,8 +13,11 @@
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
 
+using System;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Text;
+using System.Text.Json;
 
 namespace Summer.Batch.Common.Util
 {
@@ -69,5 +72,32 @@ namespace Summer.Batch.Common.Util
                 return (T) serializer.Deserialize(stream);
             }
         }
+
+        /// <summary>
+        /// Serialize an object into an Json string
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="obj"></param>
+        /// <returns></returns>
+        public static byte[] SerializeObject(this object obj)
+        {
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true
+            };
+            return JsonSerializer.SerializeToUtf8Bytes(obj, options);
+        }
+
+        /// <summary>
+        /// Reconstruct an object from an byte array data
+        /// </summary>
+        /// <param name="xml"></param>
+        /// <returns></returns>
+        public static T DeserializeObject<T>(byte[] data) where T : class
+        {
+                var utf8Reader = new Utf8JsonReader(data);
+                return JsonSerializer.Deserialize<T>(ref utf8Reader);
+        }
+
     }
 }
