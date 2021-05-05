@@ -15,13 +15,17 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using NLog;
+using Summer.Batch.Core.Core.Unity.Xml;
 using Summer.Batch.Core.Explore;
 using Summer.Batch.Core.Launch;
 using Summer.Batch.Core.Launch.Support;
 using Summer.Batch.Core.Unity;
 using Summer.Batch.Core.Unity.Xml;
+using Summer.Batch.Data;
 
 namespace Summer.Batch.Core
 {
@@ -31,7 +35,7 @@ namespace Summer.Batch.Core
     public static class JobStarter
     {
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
-
+        private const string controlQueueName = "control";
         /// <summary>
         /// Starts given job.
         /// </summary>
@@ -254,6 +258,111 @@ namespace Summer.Batch.Core
             /// InvalidOption enum litteral
             /// </summary>
             InvalidOption = 2
+        }
+        public static JobExecution SlaveStart(string xmlJobFile, string hostName, UnityLoader loader)
+        {
+
+            ControlQueue _controlQueue = GetControlQueue(controlQueueName, hostName);
+
+
+            int messageCount = _controlQueue.GetMessageCount();
+            XmlJob job = null;
+            if (messageCount != 0)
+            {
+                for (int i = 0; i < messageCount; i++)
+                {
+                    string fileName = Path.GetFileName(xmlJobFile);
+                    string message = _controlQueue.Receive(fileName);
+                    if (ValidateMessage(message)) // for 3 items
+                    {
+                        Tuple<XmlJob, string, int, bool> tuple = ValidateFileName(message, xmlJobFile);
+                        if (tuple.Item4)
+                        {
+                            // Resend the message to the controlQueue
+                            if (tuple.Item3 > 0)
+                            {
+                                _controlQueue.Send(tuple.Item2);
+                            }
+                            job = tuple.Item1;
+                            Guid guid = Guid.NewGuid();
+                            foreach (XmlStep step in job.JobElements)
+                            {
+                                step.RemoteChunking = new XmlRemoteChunking();
+                                step.RemoteChunking.HostName = hostName;
+                                step.RemoteChunking.Master = false;
+                                step.RemoteChunking.SlaveID = guid.ToString();
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+            else
+            {
+
+                throw new JobExecutionException("No slave job provided");
+            }
+            _controlQueue.Requeue();
+            loader.Job = job;
+            var jobOperator = (SimpleJobOperator)BatchRuntime.GetJobOperator(loader);
+            var executionId = jobOperator.StartNextInstance(job.Id);
+
+            return jobOperator.JobExplorer.GetJobExecution((long)executionId);
+        }
+
+        private static ControlQueue GetControlQueue(string queuename, string hostname)
+        {
+            try
+            {
+                QueueConnectionProvider queueConnectionProvider = new QueueConnectionProvider();
+                queueConnectionProvider.HostName = hostname;
+                ControlQueue _controlQueue = new ControlQueue();
+                _controlQueue.ConnectionProvider = queueConnectionProvider;
+                _controlQueue.QueueName = queuename;
+                _controlQueue.CreateQueue();
+                return _controlQueue;
+            }
+            catch (Exception e)
+            {
+                throw e.InnerException;
+            }
+        }
+
+        private static bool ValidateMessage(string message)
+        {
+            if (!string.IsNullOrWhiteSpace(message) && message.Split(';').Length == 3)
+            {
+                return true;
+            }
+            return false;
+        }
+
+        private static Tuple<XmlJob, string, int, bool> ValidateFileName(string message, string xmlJobFile)
+        {
+            var tuple = new Tuple<XmlJob, string, int, bool>(null, "", 0, false);
+            string[] splitMessage = message.Split(';');
+            string stepName = splitMessage[0];
+            string xmlFileName = splitMessage[1];
+            int slaveNumber = (Int32.TryParse(splitMessage[2], out int value)) ? value : 0;
+
+            if (Path.GetFileName(xmlJobFile).Equals(xmlFileName))
+            {
+
+                XmlJob job = XmlJobParser.LoadJob(xmlJobFile);
+                var step = job.JobElements.Find(x => x.Id == stepName);
+
+                if (step != null && slaveNumber > 0)
+                {
+                    StringBuilder stringBuilder = new StringBuilder();
+                    slaveNumber--;
+                    stringBuilder.Append(stepName + ";" + xmlFileName + ";" + (slaveNumber).ToString());
+                    return new Tuple<XmlJob, string, int, bool>(job, stringBuilder.ToString(), slaveNumber, true);
+                }
+                return tuple;
+            }
+
+
+            return tuple;
         }
     }
 }
