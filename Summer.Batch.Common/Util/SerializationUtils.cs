@@ -45,15 +45,15 @@ namespace Summer.Batch.Common.Util
 
 
 
-  //          return MessagePackSerializer.Serialize(obj, CompositeResolver.Instance);
-  /*          return MessagePackSerializer.Serialize(obj, MessagePack.Resolvers.CompositeResolver.Instance);*/
+            //          return MessagePackSerializer.Serialize(obj, CompositeResolver.Instance);
+            /*          return MessagePackSerializer.Serialize(obj, MessagePack.Resolvers.CompositeResolver.Instance);*/
 
-                       using (var stream = new MemoryStream())
-                       {
-                           var serializer = new BinaryFormatter();
-                           serializer.Serialize(stream, obj);
-                           return stream.GetBuffer();
-                       }
+            using (var stream = new MemoryStream())
+            {
+                var serializer = new BinaryFormatter();
+                serializer.Serialize(stream, obj);
+                return stream.GetBuffer();
+            }
         }
 
         /// <summary>
@@ -95,8 +95,8 @@ namespace Summer.Batch.Common.Util
         /// <returns></returns>
         public static T DeserializeObject<T>(byte[] data) where T : class
         {
-                var utf8Reader = new Utf8JsonReader(data);
-                return JsonSerializer.Deserialize<T>(ref utf8Reader);
+            var utf8Reader = new Utf8JsonReader(data);
+            return JsonSerializer.Deserialize<T>(ref utf8Reader);
         }
 
     }
