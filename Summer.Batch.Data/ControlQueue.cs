@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using NLog;
 using RabbitMQ.Client;
 
 namespace Summer.Batch.Data
 {
-    public class ControlQueue : IQueue
+    public class ControlQueue
     {
+        private readonly Logger _logger = LogManager.GetCurrentClassLogger();
         public string QueueName { get; set; }
 
         public bool Durable { get; set; }
@@ -16,8 +18,11 @@ namespace Summer.Batch.Data
         public bool AutoDelete { get; set; }
 
         public IDictionary<string, object> Arguments { get; set; }
-
-        public IQueueConnectionProvider ConnectionProvider { get; set; }
+        
+        /// <summary>
+        /// Inject Conn
+        /// </summary>
+        public QueueConnectionProvider ConnectionProvider { get; set; }
 
 
         public IModel Channel
@@ -26,13 +31,13 @@ namespace Summer.Batch.Data
         }
 
         /// <summary>
-        /// Create messageQueue
+        /// Create messageQueue with QueueName.
         /// </summary>
         public void CreateQueue()
         {
-            if (string.IsNullOrEmpty(QueueName))
+            if (string.IsNullOrEmpty(QueueName) || ConnectionProvider!=null)
             {
-                throw new ArgumentNullException("QueueName");
+                throw new ArgumentNullException("QueueName and ConnectionProvider need to provide.");
             }
             else
             {
@@ -40,13 +45,6 @@ namespace Summer.Batch.Data
                 Channel.BasicQos(0, 1, false);
             }
         }
-
-        //public void CloseQueue(string queueName)
-        //{
-        //    Channel.QueueDelete(queueName);
-        //    ConnectionProvider.Connection.Close();
-        //}
-
         /// <summary>
         /// Push the message in the queue
         /// </summary>
@@ -56,11 +54,13 @@ namespace Summer.Batch.Data
             if (string.IsNullOrWhiteSpace(message))
                 return;
 
-            var body = Encoding.UTF8.GetBytes(message);
+            byte[] bytes = Encoding.UTF8.GetBytes(message);
+            IBasicProperties basicProperties = Channel.CreateBasicProperties();
+            basicProperties.ContentType = "text/plain";
             Channel.BasicPublish(exchange: "",
                                routingKey: QueueName,
                                basicProperties: null,
-                               body: body);
+                               body: bytes);
         }
 
         /// <summary>
@@ -71,10 +71,9 @@ namespace Summer.Batch.Data
         public string Receive(string message)
         {
             BasicGetResult result = Channel.BasicGet(QueueName, false);
-            string data = null;
             if (result != null)
             {
-                data = Encoding.UTF8.GetString(result.Body.ToArray());
+                string data = Encoding.UTF8.GetString(result.Body.ToArray());
                 if (data.Contains(message))
                 {
                     Channel.BasicAck(result.DeliveryTag, false);
@@ -85,7 +84,7 @@ namespace Summer.Batch.Data
         }
 
         /// <summary>
-        /// Receive total numbers of message in the queue
+        /// Receive total numbers of message in the queue.
         /// </summary>
         /// <returns></returns>
         public int GetMessageCount()
@@ -94,7 +93,7 @@ namespace Summer.Batch.Data
         }
 
         /// <summary>
-        /// Recovery message status to the ready
+        /// Recovery message status to the ready.
         /// </summary>
         public void Requeue()
         {
@@ -102,7 +101,7 @@ namespace Summer.Batch.Data
         }
 
         /// <summary>
-        /// Purge message in the queue
+        /// Purge message in the queue.
         /// </summary>
         public void PurgeQueue()
         {
@@ -116,31 +115,74 @@ namespace Summer.Batch.Data
 
                 Console.WriteLine("Exception {0} occured.", e.ToString());
             }
-
         }
 
         /// <summary>
-        /// Count the targetmessage in the queue
+        /// Check message in the message queue.
         /// </summary>
-        /// <param name="controlQueue"></param>
         /// <param name="targetmessage"></param>
         /// <returns></returns>
-        public int CheckMessageCount(string targetmessage)
+        public bool CheckMessageExist(string targetmessage)
         {
             Requeue();
             int TotalCount = GetMessageCount();
-            int count = 0;
             while (TotalCount > 0)
             {
                 string message = Receive(targetmessage);
                 if (message != null)
                 {
-                    count++;
+                    Send(message);
+                    return true;
                 }
                 TotalCount--;
             }
             Requeue();
-            return count;
+            return false;
+        }
+
+        /// <summary>
+        /// Check message in the message queue and consume it.
+        /// </summary>
+        /// <param name="targetmessage"></param>
+        /// <returns></returns>
+        public bool CheckMessageExistAndConsume(string targetmessage)
+        {
+            Requeue();
+            int TotalCount = GetMessageCount();
+            while (TotalCount > 0)
+            {
+                string message = Receive(targetmessage);
+                if (message != null)
+                {
+                    return true;
+                }
+                TotalCount--;
+            }
+            Requeue();
+            return false;
+        }
+
+        /// <summary>
+        /// Retrieve list of slaveID with master name.
+        /// </summary>
+        /// <param name="master"></param>
+        /// <returns></returns>
+        public List<string> GetSlaveIDByMasterName(string master)
+        {
+            Requeue();
+            int messageCount = GetMessageCount();
+            List<string> slaveIDList = new List<string>();
+            while (messageCount > 0)
+            {
+                string slaveID = Receive(master);
+                if (slaveID != null)
+                {
+                    slaveIDList.Add(slaveID);
+                }
+                messageCount--;
+            }
+            Requeue();
+            return slaveIDList;
         }
     }
 }
