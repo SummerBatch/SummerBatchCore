@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using NLog;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -14,18 +16,20 @@ namespace Summer.Batch.Infrastructure.Item.Queue
 {
     public class QueueReader<T> : IItemReader<T>, IInitializationPostOperations where T : class
     {
-        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
         private DataQueue _dataQueue;
+        private const string dot = ".";
 
         /// <summary>
         /// Timeout for polling data
         /// </summary>
-        public int PollingTimeOut { get; set; } = 2000;
+        public int PollingTimeOut { get; set; } = 1;
 
         /// <summary>
         /// Maximum Number of polling
         /// </summary>
-        public int MaxNumberOfPulls { get; set; } = 5;
+        public int MaxNumberOfPolls { get; set; } = 15;
+
 
         /// <summary>
         /// Master step for slave to connect
@@ -46,55 +50,71 @@ namespace Summer.Batch.Infrastructure.Item.Queue
         public void AfterPropertiesSet()
         {
             Assert.NotNull(_dataQueue, "DataQueue must be provided");
+            Assert.NotNull(MasterName, "MasterName must be provided");
         }
 
 
         public T Read()
         {
-            var consumer = new EventingBasicConsumer(_dataQueue.Channel);
+            T item = null;
             string data = null;
             bool firstTimeout = true;
 
-            for (int i = 0; i < MaxNumberOfPulls; i++)
+            while (MaxNumberOfPolls > 0)
             {
                 // Read Message from the dataQueue
                 BasicGetResult result = _dataQueue.Channel.BasicGet(_dataQueue.QueueName, true);
                 if (result != null)
                 {
-                    data = Encoding.UTF8.GetString(result.Body.ToArray());
-                    break;
+                    try
+                    {
+                        // Deserialize message to business object
+                        item = SerializationUtils.DeserializeObject<T>(result.Body.ToArray());
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Debug("Json Serialize failed. Reason: " + ex.StackTrace);
+                        throw;
+                    }
                 }
                 else
                 {
                     // If there is no data to poll, wait for master step
-                    Thread.Sleep(PollingTimeOut);
-                    Logger.Debug("Wait for {0} second for dataQueue, check for master part is completed or not", TimeSpan.FromMilliseconds(PollingTimeOut).TotalSeconds.ToString());
+                    _logger.Debug("Wait for {0} second for dataQueue, check for master part is completed or not", PollingTimeOut);
+                    Thread.Sleep(TimeSpan.FromSeconds(PollingTimeOut));
 
                     // For the first timeout , check master step is completed
-                    if (!string.IsNullOrWhiteSpace(MasterName) && firstTimeout)
+                    if (!string.IsNullOrWhiteSpace(MasterName))
                     {
-
-                        Logger.Debug("First Timeout need to check the master process is completed. ");
-                        firstTimeout = false;
                         ControlQueue _masterqueue = new ControlQueue();
-                        _masterqueue.ConnectionProvider = _dataQueue.ConnectionProvider;
+                        QueueConnectionProvider queueConnectionProvider = new QueueConnectionProvider();
+                        queueConnectionProvider.HostName = _dataQueue.HostName;
+                        _masterqueue.ConnectionProvider = queueConnectionProvider;
                         _masterqueue.QueueName = "master";
                         _masterqueue.CreateQueue();
-                        MasterName = "master." + MasterName + ".COMPLETED";
 
-                        if (_masterqueue.CheckMessageCount(MasterName) > 0)
+                        string MasterCompletedMessage = "master" + dot + MasterName + dot + "COMPLETED";
+
+                        if (firstTimeout)
                         {
-                            Logger.Debug("There is no more data to read, slave");
-                            _masterqueue.Send(MasterName);
-                            break;
-                        }
-                        Logger.Debug("Need to wait for master to completed.");
-                    }
+                            _logger.Debug("First Timeout need to check the master process is completed. ");
+                            firstTimeout = false;
 
+                            if (_masterqueue.CheckMessageExist(MasterCompletedMessage))
+                            {
+                                _logger.Debug("There is no more data to read, slave");
+                                break;
+                            }
+                            _logger.Debug("Need to wait for master to completed.");
+                        }
+                    }
+                    MaxNumberOfPolls--;
                 }
             }
+           
 
-            return (data != null) ? JsonConvert.DeserializeObject<T>(data) : null;
+            return item;
         }
     }
 }

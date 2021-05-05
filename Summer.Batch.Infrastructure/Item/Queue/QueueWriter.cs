@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json;
 using Newtonsoft.Json;
 using NLog;
 using RabbitMQ.Client;
@@ -29,7 +30,6 @@ namespace Summer.Batch.Infrastructure.Item.Queue
         public void AfterPropertiesSet()
         {
             Assert.NotNull(_dataQueue, "DataQueue must be provided");
-
         }
 
         public void Write(IList<T> items)
@@ -41,16 +41,28 @@ namespace Summer.Batch.Infrastructure.Item.Queue
                 _logger.Warn("Executing batch queue writer : empty list of items has been given.");
                 return;
             }
-
             foreach (var item in items)
             {
-                String jsonItems = JsonConvert.SerializeObject(item);
-                var body = Encoding.UTF8.GetBytes(jsonItems);
-                _dataQueue.Channel.BasicPublish(exchange: "",
-                                     routingKey: _dataQueue.QueueName,
-                                     basicProperties: null,
-                                     body: body);
+                try
+                {
+                    // serilize business object to byte array.
+                    byte[] data = SerializationUtils.SerializeObject(item);
+                    IBasicProperties properties = _dataQueue.Channel.CreateBasicProperties();
+                    properties.ContentType = "application/json";
+                    _dataQueue.Channel.BasicPublish(exchange: "",
+                                         routingKey: _dataQueue.QueueName,
+                                         basicProperties: properties,
+                                         body: data);
+                }
+                catch (Exception e)
+                {
+                    _logger.Debug("Json Serialize failed. Reason: " + e.InnerException);
+                    throw;
+                }
+
             }
+
         }
+
     }
 }
