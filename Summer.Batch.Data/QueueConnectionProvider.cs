@@ -5,7 +5,7 @@ using RabbitMQ.Client;
 
 namespace Summer.Batch.Data
 {
-    public class QueueConnectionProvider : IQueueConnectionProvider
+    public class QueueConnectionProvider
     {
         private string _hostname;
 
@@ -16,7 +16,6 @@ namespace Summer.Batch.Data
                 _hostname = value;
                 ConnectionFactory = new ConnectionFactory { HostName = _hostname, Password = "admin", UserName = "admin" };
                 Connection = ConnectionFactory.CreateConnection();
-
                 Channel = Connection.CreateModel();
 
             }

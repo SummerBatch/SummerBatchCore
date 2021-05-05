@@ -5,8 +5,9 @@ using RabbitMQ.Client;
 
 namespace Summer.Batch.Data
 {
-    public class DataQueue : IQueue
+    public class DataQueue
     {
+        public string HostName { get; set; }
         public string QueueName { get; set; }
 
         public bool Durable { get; set; }
@@ -17,24 +18,24 @@ namespace Summer.Batch.Data
 
         public IDictionary<string, object> Arguments { get; set; }
 
-        public IQueueConnectionProvider ConnectionProvider { get; set; }
+        public IModel Channel { get; private set; }
 
-
-        public IModel Channel
-        {
-            get { return ConnectionProvider.Channel; }
-        }
-
+        /// <summary>
+        /// Create messageQueue with HostName and QueueName.
+        /// </summary>
         public void CreateQueue()
         {
-            if (string.IsNullOrEmpty(QueueName))
+            if (string.IsNullOrEmpty(QueueName) || string.IsNullOrEmpty(HostName))
             {
-                throw new ArgumentNullException("QueueName");
+                throw new ArgumentNullException("QueueName and HostName need to provide.");
             }
             else
             {
+                ConnectionFactory connectionFactory = new ConnectionFactory() { HostName = HostName, Password = "admin", UserName = "admin" };
+                IConnection connection = connectionFactory.CreateConnection();
+                Channel = connection.CreateModel();
                 Channel.QueueDeclare(QueueName, Durable, Exclusive, AutoDelete, Arguments);
-                Channel.BasicQos(0, 1000, false);
+                Channel.BasicQos(0, 1, false);
             }
         }
     }
