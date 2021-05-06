@@ -8,6 +8,9 @@ namespace Summer.Batch.Data
     [Serializable]
     public class RemoteChunking
     {
+        /// <summary>
+        /// server of message queue
+        /// </summary>
         private string _hostname;
 
         private const string ControlQueue = "control";
@@ -22,8 +25,14 @@ namespace Summer.Batch.Data
 
         private const string MasterLifeLienQueue = "master_lifeline";
 
+        /// <summary>
+        /// master flag
+        /// </summary>
         public bool _master;
 
+        /// <summary>
+        /// hashmap for master to store slave id.
+        /// </summary>
         public Dictionary<string, bool> _slaveMap;
 
         public TimeSpan _maxTimeOut;
@@ -45,15 +54,23 @@ namespace Summer.Batch.Data
         [NonSerialized]
         public ControlQueue _masterLifeLineQueue;
 
+        /// <summary>
+        /// event to control second thread
+        /// </summary>
         public AutoResetEvent threadWait 
         { 
             set { _threadWait = value; } 
             get { return _threadWait; } 
         }
 
+        /// <summary>
+        ///  unique slave id
+        /// </summary>
         public string SlaveID { set; get; }
 
-
+        /// <summary>
+        /// control thread to access message queue
+        /// </summary>
         public Thread controlThread
         {
             set { _thread = value; }
@@ -70,6 +87,8 @@ namespace Summer.Batch.Data
             _slaveStartedQueue = CreateQueue(SlaveStartedQueue);
             _slaveLifeLineQueue = CreateQueue(SlaveLifeLineQueue);
             _masterLifeLineQueue = CreateQueue(MasterLifeLienQueue);
+
+            //master need to initialize hashmap 
             if (_master)
             {
                 _slaveMap = new Dictionary<string, bool>();
@@ -77,6 +96,11 @@ namespace Summer.Batch.Data
             }
         }
 
+        /// <summary>
+        /// Create message queue with queueName.
+        /// </summary>
+        /// <param name="queueName"></param>
+        /// <returns></returns>
         public ControlQueue CreateQueue(string queueName)
         {
             if (String.IsNullOrWhiteSpace(_hostname))
@@ -95,6 +119,9 @@ namespace Summer.Batch.Data
             return controlQueue;
         }
 
+        /// <summary>
+        /// Clean content of all message queue.
+        /// </summary>
         public void CleanAllQueue()
         {
             _controlQueue.PurgeQueue();
