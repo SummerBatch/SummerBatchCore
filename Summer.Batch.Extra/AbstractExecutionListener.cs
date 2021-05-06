@@ -43,12 +43,10 @@ namespace Summer.Batch.Extra
         private const string SlaveXml = "Slave.xml";
         private const int slaveMaxNumber = 2;
 
-        private const int maxSlaveReTry = 3;
         private int _maxMasterWaitSlaveStartedRetry = 10;
         private int _maxMasterwaitSlaveCompletedRetry = 3;
-        private TimeSpan _MasterwaitSlaveCompletedTime = TimeSpan.FromSeconds(6);
+        private TimeSpan _MasterwaitSlaveCompletedTime = TimeSpan.FromSeconds(5);
         private TimeSpan _MasterWaitSlaveStartedtimeout = TimeSpan.FromSeconds(1);
-        private TimeSpan _waitRetryTime = TimeSpan.FromSeconds(3);
         private const int _masterTimerseconds = 5000;
         private const int _slaveTimerseconds = 5000;
         private TimeSpan _beforeStepThreadTimeout = TimeSpan.FromSeconds(15);
@@ -102,24 +100,28 @@ namespace Summer.Batch.Extra
                 // master step create control thread 
                 if (stepExecution.remoteChunking._master)
                 {
-                    Thread thread = new Thread((ThreadStart)(() => this.Master(stepExecution, threadWait)));
+                    // controlthread with callback method 
+                    Thread thread = new Thread((ThreadStart)(() => Master(stepExecution, threadWait)));
                     stepExecution.remoteChunking.controlThread = thread;
                     stepExecution.remoteChunking.threadWait = threadWait;
                     thread.Start();
-                    if (threadWait.WaitOne(this._beforeStepThreadTimeout))
+
+                    // wait for Master method send back slaveStarted signal
+                    if (threadWait.WaitOne(_beforeStepThreadTimeout))
                     {
                         Logger.Info("Slave is started.");
                     }
                     else
                     {
+                        // clean all message queues when no slave job provided
                         Logger.Info("Clean message in the Queue.");
                         stepExecution.remoteChunking.CleanAllQueue();
                         throw new JobExecutionException("No slave job provided");
                     }
                 }
-                else
+                else // slave step create control thread 
                 {
-                    Thread thread = new Thread((ThreadStart)(() => this.Slave(stepExecution, threadWait)));
+                    Thread thread = new Thread((ThreadStart)(() => Slave(stepExecution, threadWait)));
                     stepExecution.remoteChunking.controlThread = thread;
                     stepExecution.remoteChunking.threadWait = threadWait;
                     thread.Start();
@@ -158,23 +160,25 @@ namespace Summer.Batch.Extra
             ExitStatus returnStatus = stepExecution.ExitStatus;
             if (!"FAILED".Equals(returnStatus.ExitCode))
             {
-                MethodInfo post = this.GetType().GetMethod("Postprocess", BindingFlags.Instance | BindingFlags.NonPublic);
+                MethodInfo post = GetType().GetMethod("Postprocess", BindingFlags.Instance | BindingFlags.NonPublic);
                 // determine slave / master mode for step 
                 if (stepExecution.remoteChunking != null)
                 {
-
+                    // master part 
                     if (stepExecution.remoteChunking._master)
                     {
+                        // wait for Master method send back signal
                         if (!stepExecution.remoteChunking.threadWait.WaitOne(_afterStepThreadTimeout))
                         {
                             throw new JobExecutionException("Master step failed");
                         }
-                        // some slave failed
+                        // some slave failed master need to fail 
                         if ("FAILED".Equals(stepExecution.ExitStatus.ExitCode))
                         {
                             throw new JobExecutionException("Master step failed");
                         }
 
+                        // clean all message queues when master completed 
                         Logger.Info("Master is completed.");
                         Logger.Info("Clean message in the Queue.");
                         stepExecution.remoteChunking.CleanAllQueue();
@@ -213,8 +217,9 @@ namespace Summer.Batch.Extra
                         scope.Complete();
                     }
                 }
-            }
-            else if (stepExecution.remoteChunking != null)
+            } 
+            // batch failed need to join the thread
+            else if (stepExecution.remoteChunking != null) 
             {
                 stepExecution.remoteChunking.controlThread.Join();
             }
@@ -235,23 +240,30 @@ namespace Summer.Batch.Extra
             List<string> slaveIDList = new List<string>(stepExecution.remoteChunking._slaveMap.Keys);
             int slaveIDcount = slaveIDList.Count;
 
-            List<string> prevfailList = new List<string>();
+            List<string> slaveFailList = new List<string>();
             List<string> slaveCompletedList = new List<string>();
 
+            // check slave existed and complete all of them 
             if (slaveIDcount > 0 && slaveIDcount <= slaveMaxNumber)
             {
                 while (slaveIDcount > 0)
                 {
+                    // wait for slave to complete 
                     Thread.Sleep(waitTime);
+
+                    // update completed slave
                     Dictionary<string, bool> slaveMap = stepExecution.remoteChunking._slaveMap;
                     List<string> slaveIDCurrentList = new List<string>(slaveMap.Keys);
                     slaveIDList.AddRange(new List<string>(slaveIDCurrentList));
                     slaveIDList = slaveIDList.Distinct<string>().ToList<string>();
                     slaveCompletedList.AddRange(UpdateSlaveCompletedList(stepExecution, slaveIDList));
-                    Tuple<List<string>, List<string>> tuple = UpdateSlaveIDList(slaveMap, stepExecution, slaveIDList, prevfailList, slaveCompletedList, maxReTry, _waitRetryTime);
+
+                    // update faillist and completed slave regularly
+                    Tuple<List<string>, List<string>> tuple = UpdateSlaveIDList(slaveMap, stepExecution, slaveIDList, slaveFailList, slaveCompletedList, maxReTry, waitTime);
                     int count = tuple.Item1.Count;
-                    prevfailList = tuple.Item2;
-                    // all slave is finished
+                    slaveFailList = tuple.Item2;
+
+                    // all slaves are finished
                     if (count == 0)
                     {
                         Logger.Info("No slave need to wait .");
@@ -261,36 +273,51 @@ namespace Summer.Batch.Extra
                 }
             }
 
-
+            // clean message queue when all salves are completed
             Logger.Info("Clean message in the Queue.");
             stepExecution.remoteChunking.CleanAllQueue();
-            return prevfailList;
+            return slaveFailList;
         }
 
-
-        private Tuple<List<string>, List<string>> UpdateSlaveIDList(Dictionary<string, bool> slaveMap, StepExecution stepExecution, List<string> slaveStartedIDs, List<string> prevfailList, List<string> slaveCompletedList, int maxReTry, TimeSpan waitRetryTime)
+        /// <summary>
+        /// Update SlaveCompletedList and SlaveFailList.
+        /// </summary>
+        /// <param name="slaveMap"></param>
+        /// <param name="stepExecution"></param>
+        /// <param name="slaveStartedIDs"></param>
+        /// <param name="prevfailList"></param>
+        /// <param name="slaveCompletedList"></param>
+        /// <param name="maxReTry"></param>
+        /// <param name="waitRetryTime"></param>
+        /// <returns></returns>
+        private Tuple<List<string>, List<string>> UpdateSlaveIDList(Dictionary<string, bool> slaveMap, StepExecution stepExecution, List<string> slaveStartedIDs, List<string> slaveFailList, List<string> slaveCompletedList, int maxReTry, TimeSpan waitRetryTime)
         {
             List<string> deleteList = new List<string>();
-            List<string> currentfailList = new List<string>();
+            List<string> currentSlaveFailList = new List<string>();
+
+            // get currentSlaveFailList from slaveMap in stepExecution
             foreach (string slaveStartedId in slaveStartedIDs)
             {
                 if (!slaveMap[slaveStartedId])
                 {
                     if (!slaveCompletedList.Contains(slaveStartedId))
                     {
-                        currentfailList.Add(slaveStartedId);
+                        currentSlaveFailList.Add(slaveStartedId);
                     }
                     deleteList.Add(slaveStartedId);
                 }
             }
-            if (currentfailList.Count != prevfailList.Count)
+
+            // compare with previousSlavefailList
+            if (currentSlaveFailList.Count != slaveFailList.Count)
             {
+                // check slave is alive or not
                 while (maxReTry > 0)
                 {
                     Thread.Sleep(waitRetryTime);
-                    Logger.Info("Retry to make sure slave is alive");
+                    Logger.Info("Retry to check slave is alive");
                     Dictionary<string, bool> slaveCurrentMap = stepExecution.remoteChunking._slaveMap;
-                    foreach (string failedID in currentfailList)
+                    foreach (string failedID in currentSlaveFailList)
                     {
                         if (slaveCurrentMap[failedID])
                         {
@@ -301,18 +328,30 @@ namespace Summer.Batch.Extra
                             deleteList.Add(failedID);
                         }
                     }
-                    currentfailList.RemoveAll((ID => !deleteList.Contains(ID)));
+                    currentSlaveFailList.RemoveAll((ID => !deleteList.Contains(ID)));
                     maxReTry--;
                 }
-                prevfailList = new List<string>(currentfailList);
+
+                // update SlaveFailList with currentSlaveFailList
+                slaveFailList = new List<string>(currentSlaveFailList);
             }
+
+            // update SlaveFailList with slaveCompletedList
             slaveCompletedList.AddRange(UpdateSlaveCompletedList(stepExecution, slaveStartedIDs));
-            prevfailList.RemoveAll((item => slaveCompletedList.Contains(item)));
+            slaveFailList.RemoveAll((item => slaveCompletedList.Contains(item)));
+
+            // remove duplicate slaveID in the list
             deleteList = deleteList.Distinct<string>().ToList<string>();
             slaveStartedIDs.RemoveAll((item => deleteList.Contains(item)));
-            return Tuple.Create<List<string>, List<string>>(slaveStartedIDs, prevfailList);
+            return Tuple.Create<List<string>, List<string>>(slaveStartedIDs, slaveFailList);
         }
 
+        /// <summary>
+        /// Update SlaveCompletedList.
+        /// </summary>
+        /// <param name="stepExecution"></param>
+        /// <param name="slaveStartedIDs"></param>
+        /// <returns></returns>
         private List<string> UpdateSlaveCompletedList(StepExecution stepExecution, List<string> slaveStartedIDs)
         {
             List<string> slaveCompleteIDs = new List<string>();
@@ -328,12 +367,19 @@ namespace Summer.Batch.Extra
             return slaveCompleteIDs;
         }
 
-
+        /// <summary>
+        /// Wait at least one slave started.
+        /// </summary>
+        /// <param name="stepExecution"></param>
+        /// <param name="maxReTry"></param>
+        /// <param name="waitTime"></param>
+        /// <returns></returns>
         private bool WaitForAtLeastSlaveStarted(StepExecution stepExecution, int maxReTry, TimeSpan waitTime)
         {
             List<string> slaveStartedIDs = stepExecution.remoteChunking._slaveStartedQueue.GetSlaveIDByMasterName(stepExecution.StepName);
             if (slaveStartedIDs.Count == 0)
             {
+                // check at least one slave started
                 while(maxReTry > 0)
                 {
                     Logger.Info("Wait for slave {0} seconds.", waitTime.TotalSeconds);
@@ -356,6 +402,8 @@ namespace Summer.Batch.Extra
                 }
                 return false;
             }
+
+            // update slaveMap in the stepExecution
             Dictionary<string, bool> slaveMap = stepExecution.remoteChunking._slaveMap;
             foreach (string key in slaveStartedIDs)
             {
@@ -368,34 +416,46 @@ namespace Summer.Batch.Extra
             return true;
         }
 
+        /// <summary>
+        /// Launch Master method in the controlThread.
+        /// </summary>
+        /// <param name="stepExecution"></param>
+        /// <param name="threadWait"></param>
         public void Master(StepExecution stepExecution, AutoResetEvent threadWait)
         {
+            // clean up all message queues
             stepExecution.remoteChunking.CleanAllQueue();
 
-            // configuration information includes stepname , slavexml name, and slave max numbers;
+            // configuration information includes stepname , slavexml name, and slave max numbers
             string message = stepExecution.StepName + semicolon + SlaveXml + semicolon + slaveMaxNumber.ToString();
 
             // master send configuration information in the control queue for slave job to execute
             stepExecution.remoteChunking._controlQueue.Send(message);
 
-            Thread controlThread = stepExecution.remoteChunking.controlThread;
+            // check at least one slave started
             if (WaitForAtLeastSlaveStarted(stepExecution, _maxMasterWaitSlaveStartedRetry, _MasterWaitSlaveStartedtimeout))
             {
+                // send back signal to the beforeStep
                 threadWait.Set();
                 bool Isterminate = false;
+
+                // start a timer to check slave is still alive or not in every defualt seconds
                 Timer timer = new Timer(MasterTimerMethod, stepExecution, 0, _masterTimerseconds);
                 while (!Isterminate)
                 {
                     ControlQueue masterQueue = stepExecution.remoteChunking._masterQueue;
+
+                    // send back signal to the afterStep and stop timer when batch failed
                     if ("FAILED".Equals(stepExecution.ExitStatus.ExitCode))
                     {
                         Isterminate = true;
                         timer.Dispose();
                         threadWait.Set();
                     }
+                    // when batch completed send back signal to the afterStep and stop timer after send completedmessage to message queue and check all slaves completed
                     else if ("COMPLETED".Equals(stepExecution.ExitStatus.ExitCode))
                     {
-                        string masterCompletedMessage = "master." + stepExecution.StepName + "." + stepExecution.ExitStatus.ExitCode;
+                        string masterCompletedMessage = "master"+ dot + stepExecution.StepName + dot + stepExecution.ExitStatus.ExitCode;
                         if (!masterQueue.CheckMessageExist(masterCompletedMessage))
                         {
                             masterQueue.Send(masterCompletedMessage);
@@ -414,25 +474,26 @@ namespace Summer.Batch.Extra
                     }
                 }
             }
-            else
-            {
-                controlThread.Interrupt();
-            }
         }
 
+        /// <summary>
+        /// Launch Master timer method in the controlThread.
+        /// </summary>
+        /// <param name="stepExectuionObject"></param>
         private void MasterTimerMethod(object stepExectuionObject)
         {
             StepExecution stepExecution = (StepExecution)stepExectuionObject;
-            AbstractExecutionListener.Logger.Debug("Timer for 5 second --------------------------------------------" + DateTime.Now.ToString());
+            Logger.Debug("-------------------------------------------- Master Timer --------------------------------------------");
             string stepName = stepExecution.StepName;
             ControlQueue masterLifeLineQueue = stepExecution.remoteChunking._masterLifeLineQueue;
             string masterNoAliveMessage = stepName + dot + bool.FalseString;
+            // stop timer when batch failed
             if ("FAILED".Equals(stepExecution.ExitStatus.ExitCode))
             {
                 masterLifeLineQueue.Send(masterNoAliveMessage);
                 return;
             }
-            else
+            else // continue update slaveMap in the stepExecution and check slaves alive
             {
                 Dictionary<string, bool> slaveMap = stepExecution.remoteChunking._slaveMap;
                 List<string> slaveIDList = stepExecution.remoteChunking._slaveStartedQueue.GetSlaveIDByMasterName(stepExecution.StepName);
@@ -451,32 +512,44 @@ namespace Summer.Batch.Extra
                     if (slaveLifeLineQueue.CheckMessageExistAndConsume(targetmessage))
                     {
                         slaveMap[ID] = true;
-                        AbstractExecutionListener.Logger.Debug("slavekey: " + ID + " -----------Alive------------------");
+                        Logger.Debug("slavekey: " + ID + " -----------Alive------------------");
                     }
                     else
                     {
                         slaveMap[ID] = false;
-                        AbstractExecutionListener.Logger.Debug("slavekey: " + ID + " -----------NoAlive------------------");
+                        Logger.Debug("slavekey: " + ID + " -----------NoAlive------------------");
                     }
                 }
             }
         }
 
+        /// <summary>
+        /// Launch Slave method in the controlThread.
+        /// </summary>
+        /// <param name="stepExecution"></param>
+        /// <param name="threadWait"></param>
         public void Slave(StepExecution stepExecution, AutoResetEvent threadWait)
         {
+
+            // slaveStartedMessage includes stepname and slave id
             string slaveStartedMessage = stepExecution.StepName + dot + stepExecution.remoteChunking.SlaveID.ToString();
+
+            // slave send slaveStartedMessage in the slaveStarted queue for master job to check
             stepExecution.remoteChunking._slaveStartedQueue.Send(slaveStartedMessage);
-            Thread controlThread = stepExecution.remoteChunking.controlThread;
+
+            // start a timer to let master check slave is still alive or not in every defualt seconds
             Timer timer = new Timer(SlaveTimerMethod, stepExecution, 0, _slaveTimerseconds);
             bool Isterminate = false;
             while (!Isterminate)
             {
+                // send back signal to the afterStep and stop timer when batch failed
                 ControlQueue slaveCompletedQueue = stepExecution.remoteChunking._slaveCompletedQueue;
                 if ("FAILED".Equals(stepExecution.ExitStatus.ExitCode))
                 {
                     timer.Dispose();
                     Isterminate = true;
                 }
+                // when batch completed send back signal to the afterStep and stop timer after send completedmessage to message queue 
                 else if ("COMPLETED".Equals(stepExecution.ExitStatus.ExitCode))
                 {
                     string slaveCompletedMessage = stepExecution.JobExecution.JobInstance.JobName + dot + stepExecution.remoteChunking.SlaveID + ".COMPLETED";
@@ -488,22 +561,31 @@ namespace Summer.Batch.Extra
             }
         }
 
+        /// <summary>
+        /// Launch Slave timer method in the controlThread.
+        /// </summary>
+        /// <param name="stepExectuionObject"></param>
         private void SlaveTimerMethod(object stepExectuionObject)
         {
             StepExecution stepExecution = (StepExecution)stepExectuionObject;
             string slaveIdMessage = stepExecution.StepName + dot + stepExecution.remoteChunking.SlaveID.ToString();
-            Logger.Info("Timer for 5 second --------------------" + slaveIdMessage + "------------------------");
+            Logger.Info("-------------------------------------------- Slave Timer --------------------------------------------");
             ControlQueue slaveLifeLineQueue = stepExecution.remoteChunking._slaveLifeLineQueue;
             string slaveAliveMessage = slaveIdMessage + dot + bool.TrueString;
             string slaveNoAliveMessage = slaveIdMessage + dot + bool.FalseString;
+
+            // stop timer when batch failed
             if ("FAILED".Equals(stepExecution.ExitStatus.ExitCode))
             {
-                slaveLifeLineQueue.Send(slaveAliveMessage);
+                slaveLifeLineQueue.Send(slaveNoAliveMessage);
                 Logger.Debug(slaveIdMessage + "-----------NoAlive------------------");
                 return;
             }
-            Logger.Debug(slaveIdMessage + "-----------Alive------------------");
-            slaveLifeLineQueue.Send(slaveAliveMessage);
+            else // continue send slaveAliveMessage to the slaveLifeLineQueue 
+            {
+                Logger.Debug(slaveIdMessage + "-----------Alive------------------");
+                slaveLifeLineQueue.Send(slaveAliveMessage);
+            }
         }
 
         /// <summary>
