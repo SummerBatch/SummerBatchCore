@@ -35,7 +35,7 @@ namespace Summer.Batch.Data
         /// </summary>
         public void CreateQueue()
         {
-            if (string.IsNullOrEmpty(QueueName) || ConnectionProvider!=null)
+            if (string.IsNullOrEmpty(QueueName) || ConnectionProvider == null)
             {
                 throw new ArgumentNullException("QueueName and ConnectionProvider need to provide.");
             }
