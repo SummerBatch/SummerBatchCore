@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 
 namespace Summer.Batch.Data
 {
@@ -17,9 +18,20 @@ namespace Summer.Batch.Data
 
         private const string SlaveStartedQueue = "slave_started";
 
+        private const string SlaveLifeLineQueue = "slave_lifeline";
+
+        private const string MasterLifeLienQueue = "master_lifeline";
+
         public bool _master;
 
+        public Dictionary<string, bool> _slaveMap;
 
+        public TimeSpan _maxTimeOut;
+
+        [NonSerialized]
+        private AutoResetEvent _threadWait;
+        [NonSerialized]
+        private Thread _thread;
         [NonSerialized]
         public ControlQueue _controlQueue;
         [NonSerialized]
@@ -28,6 +40,25 @@ namespace Summer.Batch.Data
         public ControlQueue _slaveCompletedQueue;
         [NonSerialized]
         public ControlQueue _slaveStartedQueue;
+        [NonSerialized]
+        public ControlQueue _slaveLifeLineQueue;
+        [NonSerialized]
+        public ControlQueue _masterLifeLineQueue;
+
+        public AutoResetEvent threadWait 
+        { 
+            set { _threadWait = value; } 
+            get { return _threadWait; } 
+        }
+
+        public string SlaveID { set; get; }
+
+
+        public Thread controlThread
+        {
+            set { _thread = value; }
+            get { return _thread; }
+        }
 
         public RemoteChunking(string hostname, bool master)
         {
@@ -37,6 +68,13 @@ namespace Summer.Batch.Data
             _masterQueue = CreateQueue(MasterQueue);
             _slaveCompletedQueue = CreateQueue(SlaveCompletedQueue);
             _slaveStartedQueue = CreateQueue(SlaveStartedQueue);
+            _slaveLifeLineQueue = CreateQueue(SlaveLifeLineQueue);
+            _masterLifeLineQueue = CreateQueue(MasterLifeLienQueue);
+            if (_master)
+            {
+                _slaveMap = new Dictionary<string, bool>();
+                _maxTimeOut = new TimeSpan(6000);
+            }
         }
 
         public ControlQueue CreateQueue(string queueName)
@@ -49,12 +87,12 @@ namespace Summer.Batch.Data
 
             QueueConnectionProvider queueConnectionProvider = new QueueConnectionProvider();
             queueConnectionProvider.HostName = _hostname;
-            ControlQueue _queue = new ControlQueue();
-            _queue.ConnectionProvider = queueConnectionProvider;
-            _queue.QueueName = queueName;
-            _queue.CreateQueue();
+            ControlQueue controlQueue = new ControlQueue();
+            controlQueue.ConnectionProvider = queueConnectionProvider;
+            controlQueue.QueueName = queueName;
+            controlQueue.CreateQueue();
 
-            return _queue;
+            return controlQueue;
         }
 
         public void CleanAllQueue()
@@ -63,6 +101,8 @@ namespace Summer.Batch.Data
             _masterQueue.PurgeQueue();
             _slaveCompletedQueue.PurgeQueue();
             _slaveStartedQueue.PurgeQueue();
+            _slaveLifeLineQueue.PurgeQueue();
+            _masterLifeLineQueue.PurgeQueue();
         }
     }
 }
