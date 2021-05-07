@@ -19,17 +19,30 @@ namespace Summer.Batch.Core.Core.Unity.Xml
         [XmlAttribute("master")]
         public bool Master { get; set; } = true;
 
-
         /// <summary>
         /// port attribute.
         /// </summary>
         [XmlAttribute("port")]
-        public int Port { get; set; }
+        public string Port { get; set; }
 
         /// <summary>
         /// unique slave id.
         /// </summary>
         [XmlAttribute("slaveID")]
         public string SlaveID { get; set; }
+
+        /// <summary>
+        /// unique slave file name.
+        /// </summary>
+        [XmlAttribute("slaveFileName")]
+        public string SlaveFileName { get; set; } = "Slave.xml";
+
+        /// <summary>
+        /// max number of slave
+        /// </summary>
+        [XmlAttribute("slaveMaxNumber")]
+        public string SlaveMaxNumber { get; set; } = "2";
+
+
     }
 }

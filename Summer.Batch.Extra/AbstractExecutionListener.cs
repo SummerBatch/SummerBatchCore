@@ -39,19 +39,14 @@ namespace Summer.Batch.Extra
         private const string dot = ".";
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
-        // need to configure in the remotechunking throught xml
-        private const string SlaveXml = "Slave.xml";
-        private const int slaveMaxNumber = 2;
-
-        private int _maxMasterWaitSlaveStartedRetry = 10;
-        private int _maxMasterwaitSlaveCompletedRetry = 3;
-        private TimeSpan _MasterwaitSlaveCompletedTime = TimeSpan.FromSeconds(5);
-        private TimeSpan _MasterWaitSlaveStartedtimeout = TimeSpan.FromSeconds(1);
+        //master
+        private int _maxMasterWaitSlaveRetry = 3;
+        private TimeSpan _MasterWaitSlave = TimeSpan.FromSeconds(5);
         private const int _masterTimerseconds = 5000;
-        private const int _slaveTimerseconds = 5000;
-        private TimeSpan _beforeStepThreadTimeout = TimeSpan.FromSeconds(15);
         private TimeSpan _afterStepThreadTimeout = TimeSpan.FromMinutes(15);
 
+        //slave
+        private const int _slaveTimerseconds = 5000;
         /// <summary>
         /// The context manager for the job context.
         /// </summary>
@@ -107,7 +102,7 @@ namespace Summer.Batch.Extra
                     thread.Start();
 
                     // wait for Master method send back slaveStarted signal
-                    if (threadWait.WaitOne(_beforeStepThreadTimeout))
+                    if (threadWait.WaitOne(_MasterWaitSlave * _maxMasterWaitSlaveRetry))
                     {
                         Logger.Info("Slave is started.");
                     }
@@ -357,7 +352,7 @@ namespace Summer.Batch.Extra
             List<string> slaveCompleteIDs = new List<string>();
             foreach (string slaveStartedId in slaveStartedIDs)
             {
-                string targetmessage = slaveStartedId + ".COMPLETED";
+                string targetmessage = slaveStartedId + dot + "COMPLETED";
                 if (stepExecution.remoteChunking._slaveCompletedQueue.CheckMessageExistAndConsume(targetmessage))
                 {
                     slaveCompleteIDs.Add(slaveStartedId);
@@ -426,6 +421,12 @@ namespace Summer.Batch.Extra
             // clean up all message queues
             stepExecution.remoteChunking.CleanAllQueue();
 
+            // get slavexml name
+            string SlaveXml = stepExecution.remoteChunking.SlaveFileName;
+
+            // get slave max numbers
+            int slaveMaxNumber = stepExecution.remoteChunking.SlaveMaxNumber;
+
             // configuration information includes stepname , slavexml name, and slave max numbers
             string message = stepExecution.StepName + semicolon + SlaveXml + semicolon + slaveMaxNumber.ToString();
 
@@ -433,7 +434,7 @@ namespace Summer.Batch.Extra
             stepExecution.remoteChunking._controlQueue.Send(message);
 
             // check at least one slave started
-            if (WaitForAtLeastSlaveStarted(stepExecution, _maxMasterWaitSlaveStartedRetry, _MasterWaitSlaveStartedtimeout))
+            if (WaitForAtLeastSlaveStarted(stepExecution, _maxMasterWaitSlaveRetry, _MasterWaitSlave))
             {
                 // send back signal to the beforeStep
                 threadWait.Set();
@@ -462,7 +463,7 @@ namespace Summer.Batch.Extra
                         }
                         else
                         {
-                            List<string> failList = WaitForSlaveCompleted(stepExecution, slaveMaxNumber, _maxMasterwaitSlaveCompletedRetry, _MasterwaitSlaveCompletedTime);
+                            List<string> failList = WaitForSlaveCompleted(stepExecution, slaveMaxNumber, _maxMasterWaitSlaveRetry, _MasterWaitSlave);
                             timer.Dispose();
                             if (failList.Count > 0)
                             {
@@ -552,7 +553,7 @@ namespace Summer.Batch.Extra
                 // when batch completed send back signal to the afterStep and stop timer after send completedmessage to message queue 
                 else if ("COMPLETED".Equals(stepExecution.ExitStatus.ExitCode))
                 {
-                    string slaveCompletedMessage = stepExecution.JobExecution.JobInstance.JobName + dot + stepExecution.remoteChunking.SlaveID + ".COMPLETED";
+                    string slaveCompletedMessage = stepExecution.JobExecution.JobInstance.JobName + dot + stepExecution.remoteChunking.SlaveID + dot + "COMPLETED";
                     slaveCompletedQueue.Send(slaveCompletedMessage);
                     timer.Dispose();
                     threadWait.Set();

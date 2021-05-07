@@ -35,6 +35,7 @@ namespace Summer.Batch.Data
         /// </summary>
         public Dictionary<string, bool> _slaveMap;
 
+        
         public TimeSpan _maxTimeOut;
 
         [NonSerialized]
@@ -67,6 +68,17 @@ namespace Summer.Batch.Data
         ///  unique slave id
         /// </summary>
         public string SlaveID { set; get; }
+
+
+        /// <summary>
+        /// unique slave file name
+        /// </summary>
+        public string SlaveFileName { set; get; }
+
+        /// <summary>
+        /// max number of slave
+        /// </summary>
+        public int SlaveMaxNumber { set; get; }
 
         /// <summary>
         /// control thread to access message queue
