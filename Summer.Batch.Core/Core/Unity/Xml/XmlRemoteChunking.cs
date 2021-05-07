@@ -44,5 +44,22 @@ namespace Summer.Batch.Core.Core.Unity.Xml
         public string SlaveMaxNumber { get; set; } = "2";
 
 
+        /// <summary>
+        /// max retry for master
+        /// </summary>
+        [XmlAttribute("maxMasterWaitSlaveRetry")]
+        public string MaxMasterWaitSlaveRetry { get; set; } = "3";
+
+        /// <summary>
+        /// max time for master every retry
+        /// </summary>
+        [XmlAttribute("maxMasterWaitSlaveSecond")]
+        public string MaxMasterWaitSlaveSecond { get; set; } = "5";
+
+        /// <summary>
+        /// timeout of remotechunking
+        /// </summary>
+        [XmlAttribute("remoteChunkingTimoutSecond")]
+        public string RemoteChunkingTimoutSecond { get; set; } = "900";
     }
 }

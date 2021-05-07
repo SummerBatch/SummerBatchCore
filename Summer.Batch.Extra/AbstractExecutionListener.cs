@@ -39,14 +39,6 @@ namespace Summer.Batch.Extra
         private const string dot = ".";
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
-        //master
-        private int _maxMasterWaitSlaveRetry = 3;
-        private TimeSpan _MasterWaitSlave = TimeSpan.FromSeconds(5);
-        private const int _masterTimerseconds = 5000;
-        private TimeSpan _afterStepThreadTimeout = TimeSpan.FromMinutes(15);
-
-        //slave
-        private const int _slaveTimerseconds = 5000;
         /// <summary>
         /// The context manager for the job context.
         /// </summary>
@@ -100,9 +92,10 @@ namespace Summer.Batch.Extra
                     stepExecution.remoteChunking.controlThread = thread;
                     stepExecution.remoteChunking.threadWait = threadWait;
                     thread.Start();
-
+                    TimeSpan _maxMasterWaitSlaveSecond = TimeSpan.FromSeconds(stepExecution.remoteChunking.MaxMasterWaitSlaveSecond);
+                    int _maxMasterWaitSlaveRetry = stepExecution.remoteChunking.MaxMasterWaitSlaveRetry;
                     // wait for Master method send back slaveStarted signal
-                    if (threadWait.WaitOne(_MasterWaitSlave * _maxMasterWaitSlaveRetry))
+                    if (threadWait.WaitOne(_maxMasterWaitSlaveSecond * _maxMasterWaitSlaveRetry))
                     {
                         Logger.Info("Slave is started.");
                     }
@@ -159,11 +152,12 @@ namespace Summer.Batch.Extra
                 // determine slave / master mode for step 
                 if (stepExecution.remoteChunking != null)
                 {
+                    TimeSpan RemoteChunkingTimoutSecond = stepExecution.remoteChunking.RemoteChunkingTimoutSecond;
                     // master part 
                     if (stepExecution.remoteChunking._master)
                     {
                         // wait for Master method send back signal
-                        if (!stepExecution.remoteChunking.threadWait.WaitOne(_afterStepThreadTimeout))
+                        if (!stepExecution.remoteChunking.threadWait.WaitOne(RemoteChunkingTimoutSecond))
                         {
                             throw new JobExecutionException("Master step failed");
                         }
@@ -180,7 +174,7 @@ namespace Summer.Batch.Extra
                     }
                     else
                     {
-                        if (!stepExecution.remoteChunking.threadWait.WaitOne(_afterStepThreadTimeout))
+                        if (!stepExecution.remoteChunking.threadWait.WaitOne(RemoteChunkingTimoutSecond))
                         {
                             returnStatus = stepExecution.ExitStatus;
                             throw new JobExecutionException("Master step failed");
@@ -432,14 +426,17 @@ namespace Summer.Batch.Extra
 
             // master send configuration information in the control queue for slave job to execute
             stepExecution.remoteChunking._controlQueue.Send(message);
-
+            int maxMasterWaitSlaveSecond = stepExecution.remoteChunking.MaxMasterWaitSlaveSecond;
+            int maxMasterWaitSlaveRetry = stepExecution.remoteChunking.MaxMasterWaitSlaveSecond;
+            TimeSpan _MasterWaitSlaveTimeout = TimeSpan.FromSeconds(maxMasterWaitSlaveSecond);
             // check at least one slave started
-            if (WaitForAtLeastSlaveStarted(stepExecution, _maxMasterWaitSlaveRetry, _MasterWaitSlave))
+            if (WaitForAtLeastSlaveStarted(stepExecution, maxMasterWaitSlaveSecond, _MasterWaitSlaveTimeout))
             {
                 // send back signal to the beforeStep
                 threadWait.Set();
                 bool Isterminate = false;
 
+                int _masterTimerseconds = maxMasterWaitSlaveSecond * 1000;
                 // start a timer to check slave is still alive or not in every defualt seconds
                 Timer timer = new Timer(MasterTimerMethod, stepExecution, 0, _masterTimerseconds);
                 while (!Isterminate)
@@ -463,7 +460,7 @@ namespace Summer.Batch.Extra
                         }
                         else
                         {
-                            List<string> failList = WaitForSlaveCompleted(stepExecution, slaveMaxNumber, _maxMasterWaitSlaveRetry, _MasterWaitSlave);
+                            List<string> failList = WaitForSlaveCompleted(stepExecution, slaveMaxNumber, maxMasterWaitSlaveSecond, _MasterWaitSlaveTimeout);
                             timer.Dispose();
                             if (failList.Count > 0)
                             {
@@ -537,7 +534,8 @@ namespace Summer.Batch.Extra
 
             // slave send slaveStartedMessage in the slaveStarted queue for master job to check
             stepExecution.remoteChunking._slaveStartedQueue.Send(slaveStartedMessage);
-
+            int maxMasterWaitSlaveSecond = stepExecution.remoteChunking.MaxMasterWaitSlaveSecond;
+            int _slaveTimerseconds = maxMasterWaitSlaveSecond * 1000;
             // start a timer to let master check slave is still alive or not in every defualt seconds
             Timer timer = new Timer(SlaveTimerMethod, stepExecution, 0, _slaveTimerseconds);
             bool Isterminate = false;

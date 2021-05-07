@@ -69,7 +69,6 @@ namespace Summer.Batch.Data
         /// </summary>
         public string SlaveID { set; get; }
 
-
         /// <summary>
         /// unique slave file name
         /// </summary>
@@ -80,6 +79,20 @@ namespace Summer.Batch.Data
         /// </summary>
         public int SlaveMaxNumber { set; get; }
 
+        /// <summary>
+        /// max retry for master
+        /// </summary>
+        public int MaxMasterWaitSlaveRetry { set; get; }
+
+        /// <summary>
+        /// max time for master every retry
+        /// </summary>
+        public int MaxMasterWaitSlaveSecond { set; get; }
+
+        /// <summary>
+        /// timeout of remotechunking
+        /// </summary>
+        public TimeSpan RemoteChunkingTimoutSecond { set; get; }
         /// <summary>
         /// control thread to access message queue
         /// </summary>

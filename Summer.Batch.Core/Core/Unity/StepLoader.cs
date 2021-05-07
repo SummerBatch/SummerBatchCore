@@ -88,6 +88,7 @@ namespace Summer.Batch.Core.Unity
                     {
                         remoteChunking.SlaveFileName = _step.RemoteChunking.SlaveFileName;
                         remoteChunking.SlaveMaxNumber = int.Parse(_step.RemoteChunking.SlaveMaxNumber);
+                        
                     }
                     else // slave 
                     {
@@ -97,6 +98,11 @@ namespace Summer.Batch.Core.Unity
                             remoteChunking.SlaveID = _step.RemoteChunking.SlaveID;
                         }
                     }
+
+                    remoteChunking.MaxMasterWaitSlaveRetry = int.Parse(_step.RemoteChunking.MaxMasterWaitSlaveRetry);
+                    remoteChunking.MaxMasterWaitSlaveSecond = int.Parse(_step.RemoteChunking.MaxMasterWaitSlaveSecond);
+                    remoteChunking.RemoteChunkingTimoutSecond = TimeSpan.FromSeconds(int.Parse(_step.RemoteChunking.RemoteChunkingTimoutSecond));
+
                     builder = new SimpleStepBuilder(_container, _step.Id, inType, outType, Int32.Parse(_step.DelayConfig), remoteChunking)
                                     .Reader(_step.Chunk.Reader.Ref)
                                     .Writer(_step.Chunk.Writer.Ref);
