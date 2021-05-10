@@ -363,13 +363,18 @@ namespace Summer.Batch.Extra
         /// <param name="maxReTry"></param>
         /// <param name="waitTime"></param>
         /// <returns></returns>
-        private bool WaitForAtLeastSlaveStarted(StepExecution stepExecution, int maxReTry, TimeSpan waitTime)
+        private bool WaitForAtLeastSlaveStarted(StepExecution stepExecution, int maxRetry, TimeSpan waitTime)
         {
             List<string> slaveStartedIDs = stepExecution.remoteChunking._slaveStartedQueue.GetSlaveIDByMasterName(stepExecution.StepName);
+
+            //// set waitTime to 1 second and maxRetry to totalSecond
+            int totalWaitTime = (int)waitTime.TotalSeconds;
+            maxRetry = totalWaitTime * maxRetry;
+            waitTime = TimeSpan.FromSeconds(1);
             if (slaveStartedIDs.Count == 0)
             {
                 // check at least one slave started
-                while(maxReTry > 0)
+                while(maxRetry > 0)
                 {
                     Logger.Info("Wait for slave {0} seconds.", waitTime.TotalSeconds);
                     Thread.Sleep(waitTime);
@@ -387,7 +392,7 @@ namespace Summer.Batch.Extra
                         stepExecution.remoteChunking._slaveMap = slaveCurrentMap;
                         return true;
                     }
-                    maxReTry--;
+                    maxRetry--;
                 }
                 return false;
             }
@@ -427,10 +432,10 @@ namespace Summer.Batch.Extra
             // master send configuration information in the control queue for slave job to execute
             stepExecution.remoteChunking._controlQueue.Send(message);
             int maxMasterWaitSlaveSecond = stepExecution.remoteChunking.MaxMasterWaitSlaveSecond;
-            int maxMasterWaitSlaveRetry = stepExecution.remoteChunking.MaxMasterWaitSlaveSecond;
+            int maxMasterWaitSlaveRetry = stepExecution.remoteChunking.MaxMasterWaitSlaveRetry;
             TimeSpan _MasterWaitSlaveTimeout = TimeSpan.FromSeconds(maxMasterWaitSlaveSecond);
             // check at least one slave started
-            if (WaitForAtLeastSlaveStarted(stepExecution, maxMasterWaitSlaveSecond, _MasterWaitSlaveTimeout))
+            if (WaitForAtLeastSlaveStarted(stepExecution, maxMasterWaitSlaveRetry, _MasterWaitSlaveTimeout))
             {
                 // send back signal to the beforeStep
                 threadWait.Set();
