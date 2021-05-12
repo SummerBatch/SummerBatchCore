@@ -101,9 +101,9 @@ namespace Summer.Batch.Infrastructure.Item.Queue
                             _logger.Debug("First Timeout need to check the master process is completed. ");
                             firstTimeout = false;
 
-                            if (_masterqueue.CheckMessageExist(MasterCompletedMessage))
+                            if (_masterqueue.CheckMessageExistAndConsume(MasterCompletedMessage))
                             {
-                                _logger.Debug("There is no more data to read, slave");
+                                _logger.Debug("There is no more data to read for slave.");
                                 break;
                             }
                             _logger.Debug("Need to wait for master to completed.");

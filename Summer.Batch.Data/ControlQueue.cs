@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Text;
 using NLog;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
 
 namespace Summer.Batch.Data
 {
     public class ControlQueue
     {
+        private const string dot = ".";
         private readonly Logger _logger = LogManager.GetCurrentClassLogger();
         public string QueueName { get; set; }
 
@@ -18,9 +20,9 @@ namespace Summer.Batch.Data
         public bool AutoDelete { get; set; }
 
         public IDictionary<string, object> Arguments { get; set; }
-        
+
         /// <summary>
-        /// Inject Conn
+        /// Inject ConnectionProvider
         /// </summary>
         public QueueConnectionProvider ConnectionProvider { get; set; }
 
@@ -79,6 +81,24 @@ namespace Summer.Batch.Data
                     Channel.BasicAck(result.DeliveryTag, false);
                     return data;
                 }
+            }
+            return null;
+        }
+
+
+        /// <summary>
+        /// Receive the message from the queue
+        /// </summary>
+        /// <param name="message"></param>
+        /// <returns></returns>
+        public string Consume()
+        {
+            BasicGetResult result = Channel.BasicGet(QueueName, true);
+            if (result != null)
+            {
+                string data = Encoding.UTF8.GetString(result.Body.ToArray());
+                return data;
+
             }
             return null;
         }
@@ -159,6 +179,72 @@ namespace Summer.Batch.Data
                 TotalCount--;
             }
             Requeue();
+            return false;
+        }
+
+        /// <summary>
+        /// Check message in the message queue and consume it all.
+        /// </summary>
+        /// <param name="targetmessage"></param>
+        /// <returns></returns>
+        public void CheckMessageExistAndConsumeAll(List<string> slaveIDs, Dictionary<string, bool> slaveMap)
+        {
+            string TrueMessage = bool.TrueString;
+            int TotalCount = GetMessageCount();
+
+            foreach(string ID in slaveIDs)
+            {
+                slaveMap[ID] = false;
+            }
+            while (TotalCount > 0)
+            {
+                string message = Consume();
+                if (ValidateMessage(message))
+                {
+                    string[] splitMessage = message.Split(dot);
+                    string ID = splitMessage[0] + dot + splitMessage[1];
+                    bool IsAlive = (bool.TryParse(splitMessage[2], out bool value)) ? value : false;
+
+                    if (slaveIDs.Contains(ID))
+                    {
+                        if (IsAlive)
+                        {
+                            slaveMap[ID] = true;
+                        }
+                        else
+                        {
+                            slaveMap[ID] = false;
+                        }
+                    }
+                    else
+                    {
+                        slaveMap[ID] = false;
+                    }
+                }
+                TotalCount--;
+            }
+
+            foreach (string ID in slaveIDs)
+            {
+                if (slaveMap[ID])
+                {
+                    _logger.Debug("slavekey: " + ID + " -----------Alive------------------");
+                }
+                else
+                {
+                    _logger.Debug("slavekey: " + ID + " -----------NoAlive------------------");
+                }
+
+            }
+
+        }
+
+        private static bool ValidateMessage(string message)
+        {
+            if (!string.IsNullOrWhiteSpace(message) && message.Split(dot).Length == 4)
+            {
+                return true;
+            }
             return false;
         }
 

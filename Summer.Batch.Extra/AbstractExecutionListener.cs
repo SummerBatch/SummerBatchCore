@@ -157,7 +157,7 @@ namespace Summer.Batch.Extra
                     if (stepExecution.remoteChunking._master)
                     {
                         // wait for Master method send back signal
-                        if (!stepExecution.remoteChunking.threadWait.WaitOne(RemoteChunkingTimoutSecond))
+                        if (!stepExecution.remoteChunking.threadWait.WaitOne(-1))
                         {
                             throw new JobExecutionException("Master step failed");
                         }
@@ -174,10 +174,10 @@ namespace Summer.Batch.Extra
                     }
                     else
                     {
-                        if (!stepExecution.remoteChunking.threadWait.WaitOne(RemoteChunkingTimoutSecond))
+                        if (!stepExecution.remoteChunking.threadWait.WaitOne(-1))
                         {
                             returnStatus = stepExecution.ExitStatus;
-                            throw new JobExecutionException("Master step failed");
+                            throw new JobExecutionException("Slave step failed");
                         }
 
                         Logger.Info("Slave is completed.");
@@ -459,21 +459,20 @@ namespace Summer.Batch.Extra
                     else if ("COMPLETED".Equals(stepExecution.ExitStatus.ExitCode))
                     {
                         string masterCompletedMessage = "master"+ dot + stepExecution.StepName + dot + stepExecution.ExitStatus.ExitCode;
-                        if (!masterQueue.CheckMessageExist(masterCompletedMessage))
+                        int maxSlaveCompleteMessageNeeded = slaveMaxNumber;
+                        while (maxSlaveCompleteMessageNeeded > 0)
                         {
                             masterQueue.Send(masterCompletedMessage);
+                            maxSlaveCompleteMessageNeeded--;
                         }
-                        else
+                        List<string> failList = WaitForSlaveCompleted(stepExecution, slaveMaxNumber, maxMasterWaitSlaveSecond, _MasterWaitSlaveTimeout);
+                        timer.Dispose();
+                        if (failList.Count > 0)
                         {
-                            List<string> failList = WaitForSlaveCompleted(stepExecution, slaveMaxNumber, maxMasterWaitSlaveSecond, _MasterWaitSlaveTimeout);
-                            timer.Dispose();
-                            if (failList.Count > 0)
-                            {
-                                stepExecution.ExitStatus = ExitStatus.Failed;
-                            }
-                            threadWait.Set();
-                            Isterminate = true;
+                            stepExecution.ExitStatus = ExitStatus.Failed;
                         }
+                        threadWait.Set();
+                        Isterminate = true;
                     }
                 }
             }
@@ -509,20 +508,7 @@ namespace Summer.Batch.Extra
                 }
                 ControlQueue slaveLifeLineQueue = stepExecution.remoteChunking._slaveLifeLineQueue;
                 List<string> slaveIDs = new List<string>(slaveMap.Keys);
-                foreach (string ID in slaveIDs)
-                {
-                    string targetmessage = ID + dot + bool.TrueString;
-                    if (slaveLifeLineQueue.CheckMessageExistAndConsume(targetmessage))
-                    {
-                        slaveMap[ID] = true;
-                        Logger.Debug("slavekey: " + ID + " -----------Alive------------------");
-                    }
-                    else
-                    {
-                        slaveMap[ID] = false;
-                        Logger.Debug("slavekey: " + ID + " -----------NoAlive------------------");
-                    }
-                }
+                slaveLifeLineQueue.CheckMessageExistAndConsumeAll(slaveIDs, slaveMap);
             }
         }
 
@@ -575,8 +561,8 @@ namespace Summer.Batch.Extra
             string slaveIdMessage = stepExecution.StepName + dot + stepExecution.remoteChunking.SlaveID.ToString();
             Logger.Info("-------------------------------------------- Slave Timer --------------------------------------------");
             ControlQueue slaveLifeLineQueue = stepExecution.remoteChunking._slaveLifeLineQueue;
-            string slaveAliveMessage = slaveIdMessage + dot + bool.TrueString;
-            string slaveNoAliveMessage = slaveIdMessage + dot + bool.FalseString;
+            string slaveAliveMessage = slaveIdMessage + dot + bool.TrueString + dot + DateTime.Now.ToString();
+            string slaveNoAliveMessage = slaveIdMessage + dot + bool.FalseString + dot + DateTime.Now.ToString();
 
             // stop timer when batch failed
             if ("FAILED".Equals(stepExecution.ExitStatus.ExitCode))
