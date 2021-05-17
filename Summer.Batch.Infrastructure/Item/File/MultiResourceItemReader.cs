@@ -63,7 +63,7 @@ namespace Summer.Batch.Infrastructure.Item.File
         /// <summary>
         /// Collection of used resources.
         /// </summary>
-        public IResource[] Resources { get; set; }
+        public IList<IResource> Resources { get; set; }
 
         /// <summary>
         /// Save state.
@@ -85,7 +85,7 @@ namespace Summer.Batch.Infrastructure.Item.File
         /// </summary>
         public IResource CurrentResource
         {
-            get { return _currentResource < 0 || _currentResource >= Resources.Length ? null : Resources[_currentResource]; }
+            get { return _currentResource < 0 || _currentResource >= Resources.Count ? null : Resources[_currentResource]; }
         }
 
         /// <summary>
@@ -93,7 +93,7 @@ namespace Summer.Batch.Infrastructure.Item.File
         /// </summary>
         public MultiResourceItemReader()
         {
-            Name = typeof (MultiResourceItemReader<T>).Name;
+            Name = typeof(MultiResourceItemReader<T>).Name;
             Comparer = new DefaultComparer();
             SaveState = true;
         }
@@ -106,7 +106,7 @@ namespace Summer.Batch.Infrastructure.Item.File
         {
             Assert.NotNull(Resources, "resources must be set");
 
-            if (Resources.Length == 0)
+            if (Resources.Count == 0)
             {
                 if (Strict)
                 {
@@ -117,7 +117,8 @@ namespace Summer.Batch.Infrastructure.Item.File
                 return;
             }
 
-            Array.Sort(Resources, Comparer);
+            IResource[] resources = new List<IResource>(Resources).ToArray();
+            Array.Sort(resources, Comparer);
 
             if (executionContext.ContainsKey(GetExecutionContextKey(ResourceKey)))
             {
@@ -126,7 +127,6 @@ namespace Summer.Batch.Infrastructure.Item.File
                 {
                     _currentResource = 0;
                 }
-
                 Delegate.Resource = Resources[_currentResource];
                 Delegate.Open(new ExecutionContext());
             }
@@ -199,7 +199,7 @@ namespace Summer.Batch.Infrastructure.Item.File
             {
                 _currentResource++;
 
-                if (_currentResource >= Resources.Length)
+                if (_currentResource >= Resources.Count)
                 {
                     break;
                 }
