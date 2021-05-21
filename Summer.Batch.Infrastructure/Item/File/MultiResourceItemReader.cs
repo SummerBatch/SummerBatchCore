@@ -48,13 +48,15 @@ namespace Summer.Batch.Infrastructure.Item.File
     public class MultiResourceItemReader<T> : ItemStreamSupport, IItemStreamReader<T> where T : class
     {
         private const string ResourceKey = "resourceIndex";
-
+        private const string ResourceMap = "batch.resourcesMap";
+        private const string CurrentResourceKey = "batch.currentResource";
         private readonly Logger _logger = LogManager.GetCurrentClassLogger();
-
+        private ExecutionContext context;
         private int _currentResource = -1;
 
         private bool _noInput;
-
+        private int _currentCount;
+        private Dictionary<string, int> _resourcesMap;
         /// <summary>
         /// Delegate stream.
         /// </summary>
@@ -120,6 +122,8 @@ namespace Summer.Batch.Infrastructure.Item.File
             IResource[] resources = new List<IResource>(Resources).ToArray();
             Array.Sort(resources, Comparer);
 
+            _currentCount = 0;
+            _resourcesMap = new Dictionary<string, int>();
             if (executionContext.ContainsKey(GetExecutionContextKey(ResourceKey)))
             {
                 _currentResource = executionContext.GetInt(GetExecutionContextKey(ResourceKey));
@@ -153,6 +157,7 @@ namespace Summer.Batch.Infrastructure.Item.File
         {
             if (SaveState)
             {
+                context = executionContext;
                 executionContext.PutInt(GetExecutionContextKey(ResourceKey), _currentResource);
                 Delegate.Update(executionContext);
             }
@@ -184,6 +189,7 @@ namespace Summer.Batch.Infrastructure.Item.File
                 Delegate.Open(new ExecutionContext());
             }
 
+            
             return ReadNextItem();
         }
 
@@ -195,8 +201,32 @@ namespace Summer.Batch.Infrastructure.Item.File
         {
             var item = Delegate.Read();
 
+            if (item != null)
+            {
+                _currentCount++;
+                if (CurrentResource != null)
+                {
+                    string fileName = CurrentResource.GetFileInfo().Name;
+
+                    context.Put(ResourceMap, _resourcesMap);
+                    context.PutString(CurrentResourceKey, fileName);
+
+                    if (_resourcesMap.ContainsKey(fileName))
+                    {
+                        _resourcesMap[fileName] = _currentCount;
+                    }
+                    else
+                    {
+                        _resourcesMap.Add(fileName, _currentCount);
+                    }
+
+                    context.Put(ResourceMap, _resourcesMap);
+                    context.PutString(CurrentResourceKey, fileName);
+                }
+            }
             while (item == null)
             {
+                _currentCount = 0;
                 _currentResource++;
 
                 if (_currentResource >= Resources.Count)
@@ -206,11 +236,20 @@ namespace Summer.Batch.Infrastructure.Item.File
 
                 Delegate.Close();
                 Delegate.Resource = Resources[_currentResource];
+                if (CurrentResource != null)
+                {
+                    string fileName = CurrentResource.GetFileInfo().Name;
+
+                    context.Put(ResourceMap, _resourcesMap);
+                    context.PutString(CurrentResourceKey, fileName);
+                }
                 Delegate.Open(new ExecutionContext());
 
                 item = Delegate.Read();
+                _currentCount++;
             }
 
+            base.Update(context);
             return item;
         }
 
