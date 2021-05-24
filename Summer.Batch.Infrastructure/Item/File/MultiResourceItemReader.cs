@@ -49,14 +49,12 @@ namespace Summer.Batch.Infrastructure.Item.File
     {
         private const string ResourceKey = "resourceIndex";
         private const string ResourceMap = "batch.resourcesMap";
-        private const string CurrentResourceKey = "batch.currentResource";
         private readonly Logger _logger = LogManager.GetCurrentClassLogger();
         private ExecutionContext context;
         private int _currentResource = -1;
 
         private bool _noInput;
-        private int _currentCount;
-        private Dictionary<string, int> _resourcesMap;
+        private Dictionary<string, IList<T>> _resourcesMap;
         /// <summary>
         /// Delegate stream.
         /// </summary>
@@ -122,8 +120,7 @@ namespace Summer.Batch.Infrastructure.Item.File
             IResource[] resources = new List<IResource>(Resources).ToArray();
             Array.Sort(resources, Comparer);
 
-            _currentCount = 0;
-            _resourcesMap = new Dictionary<string, int>();
+            _resourcesMap = new Dictionary<string, IList<T>>();
             if (executionContext.ContainsKey(GetExecutionContextKey(ResourceKey)))
             {
                 _currentResource = executionContext.GetInt(GetExecutionContextKey(ResourceKey));
@@ -203,30 +200,26 @@ namespace Summer.Batch.Infrastructure.Item.File
 
             if (item != null)
             {
-                _currentCount++;
                 if (CurrentResource != null)
                 {
                     string fileName = CurrentResource.GetFileInfo().Name;
-
                     context.Put(ResourceMap, _resourcesMap);
-                    context.PutString(CurrentResourceKey, fileName);
-
                     if (_resourcesMap.ContainsKey(fileName))
                     {
-                        _resourcesMap[fileName] = _currentCount;
+                        _resourcesMap[fileName].Add(item);
                     }
                     else
                     {
-                        _resourcesMap.Add(fileName, _currentCount);
+                        List<T> objectList = new List<T>();
+                        objectList.Add(item);
+                        _resourcesMap.Add(fileName, objectList);
                     }
-
                     context.Put(ResourceMap, _resourcesMap);
-                    context.PutString(CurrentResourceKey, fileName);
                 }
             }
+
             while (item == null)
             {
-                _currentCount = 0;
                 _currentResource++;
 
                 if (_currentResource >= Resources.Count)
@@ -236,17 +229,26 @@ namespace Summer.Batch.Infrastructure.Item.File
 
                 Delegate.Close();
                 Delegate.Resource = Resources[_currentResource];
-                if (CurrentResource != null)
-                {
-                    string fileName = CurrentResource.GetFileInfo().Name;
-
-                    context.Put(ResourceMap, _resourcesMap);
-                    context.PutString(CurrentResourceKey, fileName);
-                }
                 Delegate.Open(new ExecutionContext());
-
                 item = Delegate.Read();
-                _currentCount++;
+                if (item != null)
+                {
+                    if (CurrentResource != null)
+                    {
+                        string fileName = CurrentResource.GetFileInfo().Name;
+                        if (_resourcesMap.ContainsKey(fileName))
+                        {
+                            _resourcesMap[fileName].Add(item);
+                        }
+                        else
+                        {
+                            List<T> objectList = new List<T>();
+                            objectList.Add(item);
+                            _resourcesMap.Add(fileName, objectList);
+                        }
+                        context.Put(ResourceMap, _resourcesMap);
+                    }
+                }
             }
 
             base.Update(context);
