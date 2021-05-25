@@ -119,8 +119,7 @@ namespace Summer.Batch.Infrastructure.Item.File
 
             IResource[] resources = new List<IResource>(Resources).ToArray();
             Array.Sort(resources, Comparer);
-
-            _resourcesMap = new Dictionary<string, IList<T>>();
+            
             if (executionContext.ContainsKey(GetExecutionContextKey(ResourceKey)))
             {
                 _currentResource = executionContext.GetInt(GetExecutionContextKey(ResourceKey));
@@ -129,10 +128,21 @@ namespace Summer.Batch.Infrastructure.Item.File
                     _currentResource = 0;
                 }
                 Delegate.Resource = Resources[_currentResource];
-                Delegate.Open(new ExecutionContext());
+                Delegate.Open(executionContext);
+                context = executionContext;
+                if (context.ContainsKey(ResourceMap))
+                {
+                    _resourcesMap = (Dictionary<string, IList<T>>)context.Get(ResourceMap);
+                }
+                else
+                {
+                    _resourcesMap = new Dictionary<string, IList<T>>();
+                }
+                
             }
             else
             {
+                _resourcesMap = new Dictionary<string, IList<T>>();
                 _currentResource = -1;
             }
         }
