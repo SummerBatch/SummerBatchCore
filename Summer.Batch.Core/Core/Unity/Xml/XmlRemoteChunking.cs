@@ -11,7 +11,7 @@ namespace Summer.Batch.Core.Core.Unity.Xml
         /// hostname attribute.
         /// </summary>
         [XmlAttribute("hostname")]
-        public string HostName { get; set; }
+        public string HostName { get; set; } = "localhost";
 
         /// <summary>
         /// master attribute.
@@ -26,35 +26,35 @@ namespace Summer.Batch.Core.Core.Unity.Xml
         public string Port { get; set; }
 
         /// <summary>
-        /// unique slave id.
+        /// unique worker id.
         /// </summary>
-        [XmlAttribute("slaveID")]
-        public string SlaveID { get; set; }
+        [XmlAttribute("workerID")]
+        public string WorkerID { get; set; }
 
         /// <summary>
-        /// unique slave file name.
+        /// unique worker file name.
         /// </summary>
-        [XmlAttribute("slaveFileName")]
-        public string SlaveFileName { get; set; } = "Slave.xml";
+        [XmlAttribute("workerFileName")]
+        public string WorkerFileName { get; set; } = "Worker.xml";
 
         /// <summary>
-        /// max number of slave
+        /// max number of worker
         /// </summary>
-        [XmlAttribute("slaveMaxNumber")]
-        public string SlaveMaxNumber { get; set; } = "2";
+        [XmlAttribute("workerMaxNumber")]
+        public string WorkerMaxNumber { get; set; } = "2";
 
 
         /// <summary>
         /// max retry for master
         /// </summary>
-        [XmlAttribute("maxMasterWaitSlaveRetry")]
-        public string MaxMasterWaitSlaveRetry { get; set; } = "3";
+        [XmlAttribute("maxMasterWaitWorkerRetry")]
+        public string MaxMasterWaitWorkerRetry { get; set; } = "3";
 
         /// <summary>
         /// max time for master every retry
         /// </summary>
-        [XmlAttribute("maxMasterWaitSlaveSecond")]
-        public string MaxMasterWaitSlaveSecond { get; set; } = "5";
+        [XmlAttribute("maxMasterWaitWorkerSecond")]
+        public string MaxMasterWaitWorkerSecond { get; set; } = "5";
 
         /// <summary>
         /// timeout of remotechunking

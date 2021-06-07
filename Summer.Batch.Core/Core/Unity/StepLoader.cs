@@ -83,24 +83,24 @@ namespace Summer.Batch.Core.Unity
                 {
                     RemoteChunking remoteChunking = new RemoteChunking(_step.RemoteChunking.HostName, _step.RemoteChunking.Master);
 
-                    // set slave configuration in the master
+                    // set worker configuration in the master
                     if (_step.RemoteChunking.Master)
                     {
-                        remoteChunking.SlaveFileName = _step.RemoteChunking.SlaveFileName;
-                        remoteChunking.SlaveMaxNumber = int.Parse(_step.RemoteChunking.SlaveMaxNumber);
+                        remoteChunking.WorkerFileName = _step.RemoteChunking.WorkerFileName;
+                        remoteChunking.WorkerMaxNumber = int.Parse(_step.RemoteChunking.WorkerMaxNumber);
                         
                     }
-                    else // slave 
+                    else // worker 
                     {
-                        // set slave id into the remotechunking object
-                        if (!string.IsNullOrEmpty(_step.RemoteChunking.SlaveID))
+                        // set worker id into the remotechunking object
+                        if (!string.IsNullOrEmpty(_step.RemoteChunking.WorkerID))
                         {
-                            remoteChunking.SlaveID = _step.RemoteChunking.SlaveID;
+                            remoteChunking.WorkerID = _step.RemoteChunking.WorkerID;
                         }
                     }
 
-                    remoteChunking.MaxMasterWaitSlaveRetry = int.Parse(_step.RemoteChunking.MaxMasterWaitSlaveRetry);
-                    remoteChunking.MaxMasterWaitSlaveSecond = int.Parse(_step.RemoteChunking.MaxMasterWaitSlaveSecond);
+                    remoteChunking.MaxMasterWaitWorkerRetry = int.Parse(_step.RemoteChunking.MaxMasterWaitWorkerRetry);
+                    remoteChunking.MaxMasterWaitWorkerSecond = int.Parse(_step.RemoteChunking.MaxMasterWaitWorkerSecond);
                     remoteChunking.RemoteChunkingTimoutSecond = TimeSpan.FromSeconds(int.Parse(_step.RemoteChunking.RemoteChunkingTimoutSecond));
 
                     builder = new SimpleStepBuilder(_container, _step.Id, inType, outType, Int32.Parse(_step.DelayConfig), remoteChunking)

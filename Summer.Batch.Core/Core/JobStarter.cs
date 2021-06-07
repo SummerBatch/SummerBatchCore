@@ -259,7 +259,7 @@ namespace Summer.Batch.Core
             /// </summary>
             InvalidOption = 2
         }
-        public static JobExecution SlaveStart(string xmlJobFile, string hostName, UnityLoader loader)
+        public static JobExecution WorkerStart(string xmlJobFile, string hostName, UnityLoader loader)
         {
 
             ControlQueue _controlQueue = GetControlQueue(controlQueueName, hostName);
@@ -290,7 +290,7 @@ namespace Summer.Batch.Core
                                 step.RemoteChunking = new XmlRemoteChunking();
                                 step.RemoteChunking.HostName = hostName;
                                 step.RemoteChunking.Master = false;
-                                step.RemoteChunking.SlaveID = guid.ToString();
+                                step.RemoteChunking.WorkerID = guid.ToString();
                             }
                             break;
                         }
@@ -300,7 +300,7 @@ namespace Summer.Batch.Core
             else
             {
 
-                throw new JobExecutionException("No slave job provided");
+                throw new JobExecutionException("No worker job provided");
             }
             _controlQueue.Requeue();
             loader.Job = job;
@@ -343,7 +343,7 @@ namespace Summer.Batch.Core
             string[] splitMessage = message.Split(';');
             string stepName = splitMessage[0];
             string xmlFileName = splitMessage[1];
-            int slaveNumber = (Int32.TryParse(splitMessage[2], out int value)) ? value : 0;
+            int workerNumber = (Int32.TryParse(splitMessage[2], out int value)) ? value : 0;
 
             if (Path.GetFileName(xmlJobFile).Equals(xmlFileName))
             {
@@ -351,12 +351,12 @@ namespace Summer.Batch.Core
                 XmlJob job = XmlJobParser.LoadJob(xmlJobFile);
                 var step = job.JobElements.Find(x => x.Id == stepName);
 
-                if (step != null && slaveNumber > 0)
+                if (step != null && workerNumber > 0)
                 {
                     StringBuilder stringBuilder = new StringBuilder();
-                    slaveNumber--;
-                    stringBuilder.Append(stepName + ";" + xmlFileName + ";" + (slaveNumber).ToString());
-                    return new Tuple<XmlJob, string, int, bool>(job, stringBuilder.ToString(), slaveNumber, true);
+                    workerNumber--;
+                    stringBuilder.Append(stepName + ";" + xmlFileName + ";" + (workerNumber).ToString());
+                    return new Tuple<XmlJob, string, int, bool>(job, stringBuilder.ToString(), workerNumber, true);
                 }
                 return tuple;
             }

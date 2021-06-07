@@ -32,7 +32,7 @@ namespace Summer.Batch.Infrastructure.Item.Queue
 
 
         /// <summary>
-        /// Master step for slave to connect
+        /// Master step for worker to connect
         /// </summary>
         public string MasterName { get; set; }
 
@@ -103,7 +103,7 @@ namespace Summer.Batch.Infrastructure.Item.Queue
 
                             if (_masterqueue.CheckMessageExistAndConsume(MasterCompletedMessage))
                             {
-                                _logger.Debug("There is no more data to read for slave.");
+                                _logger.Debug("There is no more data to read for worker.");
                                 break;
                             }
                             _logger.Debug("Need to wait for master to completed.");

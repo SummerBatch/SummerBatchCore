@@ -187,14 +187,14 @@ namespace Summer.Batch.Data
         /// </summary>
         /// <param name="targetmessage"></param>
         /// <returns></returns>
-        public void CheckMessageExistAndConsumeAll(List<string> slaveIDs, Dictionary<string, bool> slaveMap)
+        public void CheckMessageExistAndConsumeAll(List<string> workerIDs, Dictionary<string, bool> workerMap)
         {
             string TrueMessage = bool.TrueString;
             int TotalCount = GetMessageCount();
 
-            foreach(string ID in slaveIDs)
+            foreach(string ID in workerIDs)
             {
-                slaveMap[ID] = false;
+                workerMap[ID] = false;
             }
             while (TotalCount > 0)
             {
@@ -205,34 +205,34 @@ namespace Summer.Batch.Data
                     string ID = splitMessage[0] + dot + splitMessage[1];
                     bool IsAlive = (bool.TryParse(splitMessage[2], out bool value)) ? value : false;
 
-                    if (slaveIDs.Contains(ID))
+                    if (workerIDs.Contains(ID))
                     {
                         if (IsAlive)
                         {
-                            slaveMap[ID] = true;
+                            workerMap[ID] = true;
                         }
                         else
                         {
-                            slaveMap[ID] = false;
+                            workerMap[ID] = false;
                         }
                     }
                     else
                     {
-                        slaveMap[ID] = false;
+                        workerMap[ID] = false;
                     }
                 }
                 TotalCount--;
             }
 
-            foreach (string ID in slaveIDs)
+            foreach (string ID in workerIDs)
             {
-                if (slaveMap[ID])
+                if (workerMap[ID])
                 {
-                    _logger.Debug("slavekey: " + ID + " -----------Alive------------------");
+                    _logger.Debug("workerkey: " + ID + " -----------Alive------------------");
                 }
                 else
                 {
-                    _logger.Debug("slavekey: " + ID + " -----------NoAlive------------------");
+                    _logger.Debug("workerkey: " + ID + " -----------NoAlive------------------");
                 }
 
             }
@@ -249,26 +249,26 @@ namespace Summer.Batch.Data
         }
 
         /// <summary>
-        /// Retrieve list of slaveID with master name.
+        /// Retrieve list of workerID with master name.
         /// </summary>
         /// <param name="master"></param>
         /// <returns></returns>
-        public List<string> GetSlaveIDByMasterName(string master)
+        public List<string> GetWorkerIDByMasterName(string master)
         {
             Requeue();
             int messageCount = GetMessageCount();
-            List<string> slaveIDList = new List<string>();
+            List<string> workerIDList = new List<string>();
             while (messageCount > 0)
             {
-                string slaveID = Receive(master);
-                if (slaveID != null)
+                string workerID = Receive(master);
+                if (workerID != null)
                 {
-                    slaveIDList.Add(slaveID);
+                    workerIDList.Add(workerID);
                 }
                 messageCount--;
             }
             Requeue();
-            return slaveIDList;
+            return workerIDList;
         }
     }
 }

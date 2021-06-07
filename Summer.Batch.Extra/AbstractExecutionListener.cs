@@ -92,24 +92,24 @@ namespace Summer.Batch.Extra
                     stepExecution.remoteChunking.controlThread = thread;
                     stepExecution.remoteChunking.threadWait = threadWait;
                     thread.Start();
-                    TimeSpan _maxMasterWaitSlaveSecond = TimeSpan.FromSeconds(stepExecution.remoteChunking.MaxMasterWaitSlaveSecond);
-                    int _maxMasterWaitSlaveRetry = stepExecution.remoteChunking.MaxMasterWaitSlaveRetry;
-                    // wait for Master method send back slaveStarted signal
-                    if (threadWait.WaitOne(_maxMasterWaitSlaveSecond * _maxMasterWaitSlaveRetry))
+                    TimeSpan _maxMasterWaitWorkerSecond = TimeSpan.FromSeconds(stepExecution.remoteChunking.MaxMasterWaitWorkerSecond);
+                    int _maxMasterWaitWorkerRetry = stepExecution.remoteChunking.MaxMasterWaitWorkerRetry;
+                    // wait for Master method send back workerStarted signal
+                    if (threadWait.WaitOne(_maxMasterWaitWorkerSecond * _maxMasterWaitWorkerRetry))
                     {
-                        Logger.Info("Slave is started.");
+                        Logger.Info("Worker is started.");
                     }
                     else
                     {
-                        // clean all message queues when no slave job provided
+                        // clean all message queues when no work job provided
                         Logger.Info("Clean message in the Queue.");
                         stepExecution.remoteChunking.CleanAllQueue();
-                        throw new JobExecutionException("No slave job provided");
+                        throw new JobExecutionException("No worker job provided");
                     }
                 }
-                else // slave step create control thread 
+                else // worker step create control thread 
                 {
-                    Thread thread = new Thread((ThreadStart)(() => Slave(stepExecution, threadWait)));
+                    Thread thread = new Thread((ThreadStart)(() => Worker(stepExecution, threadWait)));
                     stepExecution.remoteChunking.controlThread = thread;
                     stepExecution.remoteChunking.threadWait = threadWait;
                     thread.Start();
@@ -149,7 +149,7 @@ namespace Summer.Batch.Extra
             if (!"FAILED".Equals(returnStatus.ExitCode))
             {
                 MethodInfo post = GetType().GetMethod("Postprocess", BindingFlags.Instance | BindingFlags.NonPublic);
-                // determine slave / master mode for step 
+                // determine worker / master mode for step 
                 if (stepExecution.remoteChunking != null)
                 {
                     TimeSpan RemoteChunkingTimoutSecond = stepExecution.remoteChunking.RemoteChunkingTimoutSecond;
@@ -161,7 +161,7 @@ namespace Summer.Batch.Extra
                         {
                             throw new JobExecutionException("Master step failed");
                         }
-                        // some slave failed master need to fail 
+                        // some worker failed master need to fail 
                         if ("FAILED".Equals(stepExecution.ExitStatus.ExitCode))
                         {
                             throw new JobExecutionException("Master step failed");
@@ -177,10 +177,10 @@ namespace Summer.Batch.Extra
                         if (!stepExecution.remoteChunking.threadWait.WaitOne(-1))
                         {
                             returnStatus = stepExecution.ExitStatus;
-                            throw new JobExecutionException("Slave step failed");
+                            throw new JobExecutionException("Worker step failed");
                         }
 
-                        Logger.Info("Slave is completed.");
+                        Logger.Info("Worker is completed.");
                     }
 
                 }
@@ -217,98 +217,98 @@ namespace Summer.Batch.Extra
         }
 
         /// <summary>
-        ///  Wait for all slave completed before master completed.
-        ///  if slave failed , it will add to failList and return to the master.
+        ///  Wait for all worker completed before master completed.
+        ///  if worker failed , it will add to failList and return to the master.
         /// </summary>
         /// <param name="stepExecution"></param>
-        /// <param name="slaveMaxNumber"></param>
+        /// <param name="workerMaxNumber"></param>
         /// <param name="maxReTry"></param>
         /// <param name="waitTime"></param>
-        private List<string> WaitForSlaveCompleted(StepExecution stepExecution, int slaveMaxNumber, int maxReTry, TimeSpan waitTime)
+        private List<string> WaitForWorkerCompleted(StepExecution stepExecution, int workerMaxNumber, int maxReTry, TimeSpan waitTime)
         {
-            List<string> slaveIDList = new List<string>(stepExecution.remoteChunking._slaveMap.Keys);
-            int slaveIDcount = slaveIDList.Count;
+            List<string> workerIDList = new List<string>(stepExecution.remoteChunking._workerMap.Keys);
+            int workerIDcount = workerIDList.Count;
 
-            List<string> slaveFailList = new List<string>();
-            List<string> slaveCompletedList = new List<string>();
+            List<string> workerFailList = new List<string>();
+            List<string> workerCompletedList = new List<string>();
 
-            // check slave existed and complete all of them 
-            if (slaveIDcount > 0 && slaveIDcount <= slaveMaxNumber)
+            // check worker existed and complete all of them 
+            if (workerIDcount > 0 && workerIDcount <= workerMaxNumber)
             {
-                while (slaveIDcount > 0)
+                while (workerIDcount > 0)
                 {
-                    // wait for slave to complete 
+                    // wait for worker to complete 
                     Thread.Sleep(waitTime);
 
-                    // update completed slave
-                    Dictionary<string, bool> slaveMap = stepExecution.remoteChunking._slaveMap;
-                    List<string> slaveIDCurrentList = new List<string>(slaveMap.Keys);
-                    slaveIDList.AddRange(new List<string>(slaveIDCurrentList));
-                    slaveIDList = slaveIDList.Distinct<string>().ToList<string>();
-                    slaveCompletedList.AddRange(UpdateSlaveCompletedList(stepExecution, slaveIDList));
+                    // update completed worker
+                    Dictionary<string, bool> workerMap = stepExecution.remoteChunking._workerMap;
+                    List<string> workerIDCurrentList = new List<string>(workerMap.Keys);
+                    workerIDList.AddRange(new List<string>(workerIDCurrentList));
+                    workerIDList = workerIDList.Distinct<string>().ToList<string>();
+                    workerCompletedList.AddRange(UpdateWorkerCompletedList(stepExecution, workerIDList));
 
-                    // update faillist and completed slave regularly
-                    Tuple<List<string>, List<string>> tuple = UpdateSlaveIDList(slaveMap, stepExecution, slaveIDList, slaveFailList, slaveCompletedList, maxReTry, waitTime);
+                    // update faillist and completed worker regularly
+                    Tuple<List<string>, List<string>> tuple = UpdateWorkerIDList(workerMap, stepExecution, workerIDList, workerFailList, workerCompletedList, maxReTry, waitTime);
                     int count = tuple.Item1.Count;
-                    slaveFailList = tuple.Item2;
+                    workerFailList = tuple.Item2;
 
-                    // all slaves are finished
+                    // all workers are finished
                     if (count == 0)
                     {
-                        Logger.Info("No slave need to wait .");
+                        Logger.Info("No worker need to wait .");
                         break;
                     }
-                    Logger.Info("{0} slave need to complete", count);
+                    Logger.Info("{0} worker need to complete", count);
                 }
             }
 
             // clean message queue when all salves are completed
             Logger.Info("Clean message in the Queue.");
             stepExecution.remoteChunking.CleanAllQueue();
-            return slaveFailList;
+            return workerFailList;
         }
 
         /// <summary>
-        /// Update SlaveCompletedList and SlaveFailList.
+        /// Update WorkerCompletedList and WorkerFailList.
         /// </summary>
-        /// <param name="slaveMap"></param>
+        /// <param name="workerMap"></param>
         /// <param name="stepExecution"></param>
-        /// <param name="slaveStartedIDs"></param>
+        /// <param name="workerStartedIDs"></param>
         /// <param name="prevfailList"></param>
-        /// <param name="slaveCompletedList"></param>
+        /// <param name="workerCompletedList"></param>
         /// <param name="maxReTry"></param>
         /// <param name="waitRetryTime"></param>
         /// <returns></returns>
-        private Tuple<List<string>, List<string>> UpdateSlaveIDList(Dictionary<string, bool> slaveMap, StepExecution stepExecution, List<string> slaveStartedIDs, List<string> slaveFailList, List<string> slaveCompletedList, int maxReTry, TimeSpan waitRetryTime)
+        private Tuple<List<string>, List<string>> UpdateWorkerIDList(Dictionary<string, bool> workerMap, StepExecution stepExecution, List<string> workerStartedIDs, List<string> workerFailList, List<string> workerCompletedList, int maxReTry, TimeSpan waitRetryTime)
         {
             List<string> deleteList = new List<string>();
-            List<string> currentSlaveFailList = new List<string>();
+            List<string> currentWorkerFailList = new List<string>();
 
-            // get currentSlaveFailList from slaveMap in stepExecution
-            foreach (string slaveStartedId in slaveStartedIDs)
+            // get currentWorkerFailList from workerMap in stepExecution
+            foreach (string workerStartedId in workerStartedIDs)
             {
-                if (!slaveMap[slaveStartedId])
+                if (!workerMap[workerStartedId])
                 {
-                    if (!slaveCompletedList.Contains(slaveStartedId))
+                    if (!workerCompletedList.Contains(workerStartedId))
                     {
-                        currentSlaveFailList.Add(slaveStartedId);
+                        currentWorkerFailList.Add(workerStartedId);
                     }
-                    deleteList.Add(slaveStartedId);
+                    deleteList.Add(workerStartedId);
                 }
             }
 
-            // compare with previousSlavefailList
-            if (currentSlaveFailList.Count != slaveFailList.Count)
+            // compare with previousWorkrerfailList
+            if (currentWorkerFailList.Count != workerFailList.Count)
             {
-                // check slave is alive or not
+                // check worker is alive or not
                 while (maxReTry > 0)
                 {
                     Thread.Sleep(waitRetryTime);
-                    Logger.Info("Retry to check slave is alive");
-                    Dictionary<string, bool> slaveCurrentMap = stepExecution.remoteChunking._slaveMap;
-                    foreach (string failedID in currentSlaveFailList)
+                    Logger.Info("Retry to check worker is alive");
+                    Dictionary<string, bool> workerCurrentMap = stepExecution.remoteChunking._workerMap;
+                    foreach (string failedID in currentWorkerFailList)
                     {
-                        if (slaveCurrentMap[failedID])
+                        if (workerCurrentMap[failedID])
                         {
                             deleteList.Remove(failedID);
                         }
@@ -317,79 +317,79 @@ namespace Summer.Batch.Extra
                             deleteList.Add(failedID);
                         }
                     }
-                    currentSlaveFailList.RemoveAll((ID => !deleteList.Contains(ID)));
+                    currentWorkerFailList.RemoveAll((ID => !deleteList.Contains(ID)));
                     maxReTry--;
                 }
 
-                // update SlaveFailList with currentSlaveFailList
-                slaveFailList = new List<string>(currentSlaveFailList);
+                // update WorkerFailList with currentWorkerFailList
+                workerFailList = new List<string>(currentWorkerFailList);
             }
 
-            // update SlaveFailList with slaveCompletedList
-            slaveCompletedList.AddRange(UpdateSlaveCompletedList(stepExecution, slaveStartedIDs));
-            slaveFailList.RemoveAll((item => slaveCompletedList.Contains(item)));
+            // update WorkerFailList with workerCompletedList
+            workerCompletedList.AddRange(UpdateWorkerCompletedList(stepExecution, workerStartedIDs));
+            workerFailList.RemoveAll((item => workerCompletedList.Contains(item)));
 
-            // remove duplicate slaveID in the list
+            // remove duplicate workerID in the list
             deleteList = deleteList.Distinct<string>().ToList<string>();
-            slaveStartedIDs.RemoveAll((item => deleteList.Contains(item)));
-            return Tuple.Create<List<string>, List<string>>(slaveStartedIDs, slaveFailList);
+            workerStartedIDs.RemoveAll((item => deleteList.Contains(item)));
+            return Tuple.Create<List<string>, List<string>>(workerStartedIDs, workerFailList);
         }
 
         /// <summary>
-        /// Update SlaveCompletedList.
+        /// Update WorkerCompletedList.
         /// </summary>
         /// <param name="stepExecution"></param>
-        /// <param name="slaveStartedIDs"></param>
+        /// <param name="workerStartedIDs"></param>
         /// <returns></returns>
-        private List<string> UpdateSlaveCompletedList(StepExecution stepExecution, List<string> slaveStartedIDs)
+        private List<string> UpdateWorkerCompletedList(StepExecution stepExecution, List<string> workerStartedIDs)
         {
-            List<string> slaveCompleteIDs = new List<string>();
-            foreach (string slaveStartedId in slaveStartedIDs)
+            List<string> workerCompleteIDs = new List<string>();
+            foreach (string workerStartedId in workerStartedIDs)
             {
-                string targetmessage = slaveStartedId + dot + "COMPLETED";
-                if (stepExecution.remoteChunking._slaveCompletedQueue.CheckMessageExistAndConsume(targetmessage))
+                string targetmessage = workerStartedId + dot + "COMPLETED";
+                if (stepExecution.remoteChunking._workerCompletedQueue.CheckMessageExistAndConsume(targetmessage))
                 {
-                    slaveCompleteIDs.Add(slaveStartedId);
+                    workerCompleteIDs.Add(workerStartedId);
                 }
                    
             }
-            return slaveCompleteIDs;
+            return workerCompleteIDs;
         }
 
         /// <summary>
-        /// Wait at least one slave started.
+        /// Wait at least one worker started.
         /// </summary>
         /// <param name="stepExecution"></param>
         /// <param name="maxReTry"></param>
         /// <param name="waitTime"></param>
         /// <returns></returns>
-        private bool WaitForAtLeastSlaveStarted(StepExecution stepExecution, int maxRetry, TimeSpan waitTime)
+        private bool WaitForAtLeastWorkerStarted(StepExecution stepExecution, int maxRetry, TimeSpan waitTime)
         {
-            List<string> slaveStartedIDs = stepExecution.remoteChunking._slaveStartedQueue.GetSlaveIDByMasterName(stepExecution.StepName);
+            List<string> workerStartedIDs = stepExecution.remoteChunking._workerStartedQueue.GetWorkerIDByMasterName(stepExecution.StepName);
 
             //// set waitTime to 1 second and maxRetry to totalSecond
             int totalWaitTime = (int)waitTime.TotalSeconds;
             maxRetry = totalWaitTime * maxRetry;
             waitTime = TimeSpan.FromSeconds(1);
-            if (slaveStartedIDs.Count == 0)
+            if (workerStartedIDs.Count == 0)
             {
-                // check at least one slave started
+                // check at least one worker started
                 while(maxRetry > 0)
                 {
-                    Logger.Info("Wait for slave {0} seconds.", waitTime.TotalSeconds);
+                    Logger.Info("Wait for worker {0} seconds.", waitTime.TotalSeconds);
                     Thread.Sleep(waitTime);
-                    slaveStartedIDs = stepExecution.remoteChunking._slaveStartedQueue.GetSlaveIDByMasterName(stepExecution.StepName);
-                    if (slaveStartedIDs.Count > 0)
+                    workerStartedIDs = stepExecution.remoteChunking._workerStartedQueue.GetWorkerIDByMasterName(stepExecution.StepName);
+                    if (workerStartedIDs.Count > 0)
                     {
-                        Dictionary<string, bool> slaveCurrentMap = stepExecution.remoteChunking._slaveMap;
-                        foreach (string key in slaveStartedIDs)
+                        Dictionary<string, bool> workerCurrentMap = stepExecution.remoteChunking._workerMap;
+                        foreach (string key in workerStartedIDs)
                         {
-                            if (!slaveCurrentMap.ContainsKey(key))
+                            if (!workerCurrentMap.ContainsKey(key))
                             {
-                                slaveCurrentMap[key] = true;
+                                workerCurrentMap[key] = true;
                             }
                         }
-                        stepExecution.remoteChunking._slaveMap = slaveCurrentMap;
+                        stepExecution.remoteChunking._workerMap = workerCurrentMap;
                         return true;
                     }
                     maxRetry--;
@@ -397,16 +397,16 @@ namespace Summer.Batch.Extra
                 return false;
             }
 
-            // update slaveMap in the stepExecution
-            Dictionary<string, bool> slaveMap = stepExecution.remoteChunking._slaveMap;
-            foreach (string key in slaveStartedIDs)
+            // update workerMap in the stepExecution
+            Dictionary<string, bool> workerMap = stepExecution.remoteChunking._workerMap;
+            foreach (string key in workerStartedIDs)
             {
-                if (!slaveMap.ContainsKey(key))
+                if (!workerMap.ContainsKey(key))
                 {
-                    slaveMap[key] = true;
+                    workerMap[key] = true;
                 }
             }
-            stepExecution.remoteChunking._slaveMap = slaveMap;
+            stepExecution.remoteChunking._workerMap = workerMap;
             return true;
         }
 
@@ -420,29 +420,29 @@ namespace Summer.Batch.Extra
             // clean up all message queues
             stepExecution.remoteChunking.CleanAllQueue();
 
-            // get slavexml name
-            string SlaveXml = stepExecution.remoteChunking.SlaveFileName;
+            // get workerxml name
+            string WorkerXml = stepExecution.remoteChunking.WorkerFileName;
 
-            // get slave max numbers
-            int slaveMaxNumber = stepExecution.remoteChunking.SlaveMaxNumber;
+            // get worker max numbers
+            int workerMaxNumber = stepExecution.remoteChunking.WorkerMaxNumber;
 
-            // configuration information includes stepname , slavexml name, and slave max numbers
-            string message = stepExecution.StepName + semicolon + SlaveXml + semicolon + slaveMaxNumber.ToString();
+            // configuration information includes stepname , workerxml name, and worker max numbers
+            string message = stepExecution.StepName + semicolon + WorkerXml + semicolon + workerMaxNumber.ToString();
 
-            // master send configuration information in the control queue for slave job to execute
+            // master send configuration information in the control queue for worker job to execute
             stepExecution.remoteChunking._controlQueue.Send(message);
-            int maxMasterWaitSlaveSecond = stepExecution.remoteChunking.MaxMasterWaitSlaveSecond;
-            int maxMasterWaitSlaveRetry = stepExecution.remoteChunking.MaxMasterWaitSlaveRetry;
-            TimeSpan _MasterWaitSlaveTimeout = TimeSpan.FromSeconds(maxMasterWaitSlaveSecond);
-            // check at least one slave started
-            if (WaitForAtLeastSlaveStarted(stepExecution, maxMasterWaitSlaveRetry, _MasterWaitSlaveTimeout))
+            int maxMasterWaitWorkerSecond = stepExecution.remoteChunking.MaxMasterWaitWorkerSecond;
+            int maxMasterWaitWorkerRetry = stepExecution.remoteChunking.MaxMasterWaitWorkerRetry;
+            TimeSpan _MasterWaitWorkerTimeout = TimeSpan.FromSeconds(maxMasterWaitWorkerSecond);
+            // check at least one worker started
+            if (WaitForAtLeastWorkerStarted(stepExecution, maxMasterWaitWorkerRetry, _MasterWaitWorkerTimeout))
             {
                 // send back signal to the beforeStep
                 threadWait.Set();
                 bool Isterminate = false;
 
-                int _masterTimerseconds = maxMasterWaitSlaveSecond * 1000;
-                // start a timer to check slave is still alive or not in every defualt seconds
+                int _masterTimerseconds = maxMasterWaitWorkerSecond * 1000;
+                // start a timer to check worker is still alive or not in every defualt seconds
                 Timer timer = new Timer(MasterTimerMethod, stepExecution, 0, _masterTimerseconds);
                 while (!Isterminate)
                 {
@@ -455,17 +455,17 @@ namespace Summer.Batch.Extra
                         timer.Dispose();
                         threadWait.Set();
                     }
-                    // when batch completed send back signal to the afterStep and stop timer after send completedmessage to message queue and check all slaves completed
+                    // when batch completed send back signal to the afterStep and stop timer after send completedmessage to message queue and check all workers completed
                     else if ("COMPLETED".Equals(stepExecution.ExitStatus.ExitCode))
                     {
                         string masterCompletedMessage = "master"+ dot + stepExecution.StepName + dot + stepExecution.ExitStatus.ExitCode;
-                        int maxSlaveCompleteMessageNeeded = slaveMaxNumber;
-                        while (maxSlaveCompleteMessageNeeded > 0)
+                        int maxWorkerCompleteMessageNeeded = workerMaxNumber;
+                        while (maxWorkerCompleteMessageNeeded > 0)
                         {
                             masterQueue.Send(masterCompletedMessage);
-                            maxSlaveCompleteMessageNeeded--;
+                            maxWorkerCompleteMessageNeeded--;
                         }
-                        List<string> failList = WaitForSlaveCompleted(stepExecution, slaveMaxNumber, maxMasterWaitSlaveSecond, _MasterWaitSlaveTimeout);
+                        List<string> failList = WaitForWorkerCompleted(stepExecution, workerMaxNumber, maxMasterWaitWorkerSecond, _MasterWaitWorkerTimeout);
                         timer.Dispose();
                         if (failList.Count > 0)
                         {
@@ -495,45 +495,45 @@ namespace Summer.Batch.Extra
                 masterLifeLineQueue.Send(masterNoAliveMessage);
                 return;
             }
-            else // continue update slaveMap in the stepExecution and check slaves alive
+            else // continue update workerMap in the stepExecution and check workers alive
             {
-                Dictionary<string, bool> slaveMap = stepExecution.remoteChunking._slaveMap;
-                List<string> slaveIDList = stepExecution.remoteChunking._slaveStartedQueue.GetSlaveIDByMasterName(stepExecution.StepName);
-                foreach (string slaveID in slaveIDList)
+                Dictionary<string, bool> workerMap = stepExecution.remoteChunking._workerMap;
+                List<string> workerIDList = stepExecution.remoteChunking._workerStartedQueue.GetWorkerIDByMasterName(stepExecution.StepName);
+                foreach (string workerID in workerIDList)
                 {
-                    if (!slaveMap.ContainsKey(slaveID))
+                    if (!workerMap.ContainsKey(workerID))
                     {
-                        slaveMap[slaveID] = true;
+                        workerMap[workerID] = true;
                     }
                 }
-                ControlQueue slaveLifeLineQueue = stepExecution.remoteChunking._slaveLifeLineQueue;
-                List<string> slaveIDs = new List<string>(slaveMap.Keys);
-                slaveLifeLineQueue.CheckMessageExistAndConsumeAll(slaveIDs, slaveMap);
+                ControlQueue workerLifeLineQueue = stepExecution.remoteChunking._workerLifeLineQueue;
+                List<string> workerIDs = new List<string>(workerMap.Keys);
+                workerLifeLineQueue.CheckMessageExistAndConsumeAll(workerIDs, workerMap);
             }
         }
 
         /// <summary>
-        /// Launch Slave method in the controlThread.
+        /// Launch Worker method in the controlThread.
         /// </summary>
         /// <param name="stepExecution"></param>
         /// <param name="threadWait"></param>
-        public void Slave(StepExecution stepExecution, AutoResetEvent threadWait)
+        public void Worker(StepExecution stepExecution, AutoResetEvent threadWait)
         {
 
-            // slaveStartedMessage includes stepname and slave id
-            string slaveStartedMessage = stepExecution.StepName + dot + stepExecution.remoteChunking.SlaveID.ToString();
+            // workerStartedMessage includes stepname and worker id
+            string workerStartedMessage = stepExecution.StepName + dot + stepExecution.remoteChunking.WorkerID.ToString();
 
-            // slave send slaveStartedMessage in the slaveStarted queue for master job to check
-            stepExecution.remoteChunking._slaveStartedQueue.Send(slaveStartedMessage);
-            int maxMasterWaitSlaveSecond = stepExecution.remoteChunking.MaxMasterWaitSlaveSecond;
-            int _slaveTimerseconds = maxMasterWaitSlaveSecond * 1000;
-            // start a timer to let master check slave is still alive or not in every defualt seconds
-            Timer timer = new Timer(SlaveTimerMethod, stepExecution, 0, _slaveTimerseconds);
+            // worker send workerStartedMessage in the workerStarted queue for master job to check
+            stepExecution.remoteChunking._workerStartedQueue.Send(workerStartedMessage);
+            int maxMasterWaitWorkerSecond = stepExecution.remoteChunking.MaxMasterWaitWorkerSecond;
+            int _workerTimerseconds = maxMasterWaitWorkerSecond * 1000;
+            // start a timer to let master check worker is still alive or not in every defualt seconds
+            Timer timer = new Timer(WorkerTimerMethod, stepExecution, 0, _workerTimerseconds);
             bool Isterminate = false;
             while (!Isterminate)
             {
                 // send back signal to the afterStep and stop timer when batch failed
-                ControlQueue slaveCompletedQueue = stepExecution.remoteChunking._slaveCompletedQueue;
+                ControlQueue workerCompletedQueue = stepExecution.remoteChunking._workerCompletedQueue;
                 if ("FAILED".Equals(stepExecution.ExitStatus.ExitCode))
                 {
                     timer.Dispose();
@@ -542,8 +542,8 @@ namespace Summer.Batch.Extra
                 // when batch completed send back signal to the afterStep and stop timer after send completedmessage to message queue 
                 else if ("COMPLETED".Equals(stepExecution.ExitStatus.ExitCode))
                 {
-                    string slaveCompletedMessage = stepExecution.JobExecution.JobInstance.JobName + dot + stepExecution.remoteChunking.SlaveID + dot + "COMPLETED";
-                    slaveCompletedQueue.Send(slaveCompletedMessage);
+                    string workerCompletedMessage = stepExecution.JobExecution.JobInstance.JobName + dot + stepExecution.remoteChunking.WorkerID + dot + "COMPLETED";
+                    workerCompletedQueue.Send(workerCompletedMessage);
                     timer.Dispose();
                     threadWait.Set();
                     Isterminate = true;
@@ -552,29 +552,29 @@ namespace Summer.Batch.Extra
         }
 
         /// <summary>
-        /// Launch Slave timer method in the controlThread.
+        /// Launch Worker timer method in the controlThread.
         /// </summary>
         /// <param name="stepExectuionObject"></param>
-        private void SlaveTimerMethod(object stepExectuionObject)
+        private void WorkerTimerMethod(object stepExectuionObject)
         {
             StepExecution stepExecution = (StepExecution)stepExectuionObject;
-            string slaveIdMessage = stepExecution.StepName + dot + stepExecution.remoteChunking.SlaveID.ToString();
-            Logger.Info("-------------------------------------------- Slave Timer --------------------------------------------");
-            ControlQueue slaveLifeLineQueue = stepExecution.remoteChunking._slaveLifeLineQueue;
-            string slaveAliveMessage = slaveIdMessage + dot + bool.TrueString + dot + DateTime.Now.ToString();
-            string slaveNoAliveMessage = slaveIdMessage + dot + bool.FalseString + dot + DateTime.Now.ToString();
+            string workerIdMessage = stepExecution.StepName + dot + stepExecution.remoteChunking.WorkerID.ToString();
+            Logger.Info("-------------------------------------------- Worker Timer --------------------------------------------");
+            ControlQueue workerLifeLineQueue = stepExecution.remoteChunking._workerLifeLineQueue;
+            string workerAliveMessage = workerIdMessage + dot + bool.TrueString + dot + DateTime.Now.ToString();
+            string workerNoAliveMessage = workerIdMessage + dot + bool.FalseString + dot + DateTime.Now.ToString();
 
             // stop timer when batch failed
             if ("FAILED".Equals(stepExecution.ExitStatus.ExitCode))
             {
-                slaveLifeLineQueue.Send(slaveNoAliveMessage);
-                Logger.Debug(slaveIdMessage + "-----------NoAlive------------------");
+                workerLifeLineQueue.Send(workerNoAliveMessage);
+                Logger.Debug(workerIdMessage + "-----------NoAlive------------------");
                 return;
             }
-            else // continue send slaveAliveMessage to the slaveLifeLineQueue 
+            else // continue send workerAliveMessage to the workerLifeLineQueue 
             {
-                Logger.Debug(slaveIdMessage + "-----------Alive------------------");
-                slaveLifeLineQueue.Send(slaveAliveMessage);
+                Logger.Debug(workerIdMessage + "-----------Alive------------------");
+                workerLifeLineQueue.Send(workerAliveMessage);
             }
         }
 

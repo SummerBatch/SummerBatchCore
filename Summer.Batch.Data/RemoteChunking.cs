@@ -17,11 +17,11 @@ namespace Summer.Batch.Data
 
         private const string MasterQueue = "master";
 
-        private const string SlaveCompletedQueue = "slave_completed";
+        private const string WorkerCompletedQueue = "worker_completed";
 
-        private const string SlaveStartedQueue = "slave_started";
+        private const string WorkerStartedQueue = "worker_started";
 
-        private const string SlaveLifeLineQueue = "slave_lifeline";
+        private const string WorkerLifeLineQueue = "worker_lifeline";
 
         private const string MasterLifeLienQueue = "master_lifeline";
 
@@ -31,9 +31,9 @@ namespace Summer.Batch.Data
         public bool _master;
 
         /// <summary>
-        /// hashmap for master to store slave id.
+        /// hashmap for master to store worker id.
         /// </summary>
-        public Dictionary<string, bool> _slaveMap;
+        public Dictionary<string, bool> _workerMap;
 
         
         public TimeSpan _maxTimeOut;
@@ -47,11 +47,11 @@ namespace Summer.Batch.Data
         [NonSerialized]
         public ControlQueue _masterQueue;
         [NonSerialized]
-        public ControlQueue _slaveCompletedQueue;
+        public ControlQueue _workerCompletedQueue;
         [NonSerialized]
-        public ControlQueue _slaveStartedQueue;
+        public ControlQueue _workerStartedQueue;
         [NonSerialized]
-        public ControlQueue _slaveLifeLineQueue;
+        public ControlQueue _workerLifeLineQueue;
         [NonSerialized]
         public ControlQueue _masterLifeLineQueue;
 
@@ -65,29 +65,29 @@ namespace Summer.Batch.Data
         }
 
         /// <summary>
-        ///  unique slave id
+        ///  unique worker id
         /// </summary>
-        public string SlaveID { set; get; }
+        public string WorkerID { set; get; }
 
         /// <summary>
-        /// unique slave file name
+        /// unique worker file name
         /// </summary>
-        public string SlaveFileName { set; get; }
+        public string WorkerFileName { set; get; }
 
         /// <summary>
-        /// max number of slave
+        /// max number of worker
         /// </summary>
-        public int SlaveMaxNumber { set; get; }
+        public int WorkerMaxNumber { set; get; }
 
         /// <summary>
         /// max retry for master
         /// </summary>
-        public int MaxMasterWaitSlaveRetry { set; get; }
+        public int MaxMasterWaitWorkerRetry { set; get; }
 
         /// <summary>
         /// max time for master every retry
         /// </summary>
-        public int MaxMasterWaitSlaveSecond { set; get; }
+        public int MaxMasterWaitWorkerSecond { set; get; }
 
         /// <summary>
         /// timeout of remotechunking
@@ -108,15 +108,15 @@ namespace Summer.Batch.Data
             _master = master;
             _controlQueue = CreateQueue(ControlQueue);
             _masterQueue = CreateQueue(MasterQueue);
-            _slaveCompletedQueue = CreateQueue(SlaveCompletedQueue);
-            _slaveStartedQueue = CreateQueue(SlaveStartedQueue);
-            _slaveLifeLineQueue = CreateQueue(SlaveLifeLineQueue);
+            _workerCompletedQueue = CreateQueue(WorkerCompletedQueue);
+            _workerStartedQueue = CreateQueue(WorkerStartedQueue);
+            _workerLifeLineQueue = CreateQueue(WorkerLifeLineQueue);
             _masterLifeLineQueue = CreateQueue(MasterLifeLienQueue);
 
             //master need to initialize hashmap 
             if (_master)
             {
-                _slaveMap = new Dictionary<string, bool>();
+                _workerMap = new Dictionary<string, bool>();
                 _maxTimeOut = new TimeSpan(6000);
             }
         }
@@ -151,9 +151,9 @@ namespace Summer.Batch.Data
         {
             _controlQueue.PurgeQueue();
             _masterQueue.PurgeQueue();
-            _slaveCompletedQueue.PurgeQueue();
-            _slaveStartedQueue.PurgeQueue();
-            _slaveLifeLineQueue.PurgeQueue();
+            _workerCompletedQueue.PurgeQueue();
+            _workerStartedQueue.PurgeQueue();
+            _workerLifeLineQueue.PurgeQueue();
             _masterLifeLineQueue.PurgeQueue();
         }
     }
