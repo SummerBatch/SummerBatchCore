@@ -19,7 +19,7 @@ namespace Summer.Batch.Infrastructure.Item.Queue
         private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
         private DataQueue _dataQueue;
         private const string dot = ".";
-
+        private int _maxNumberOfPolls;
         /// <summary>
         /// Timeout for polling data
         /// </summary>
@@ -59,8 +59,8 @@ namespace Summer.Batch.Infrastructure.Item.Queue
             T item = null;
             string data = null;
             bool firstTimeout = true;
-
-            while (MaxNumberOfPolls > 0)
+            _maxNumberOfPolls = MaxNumberOfPolls;
+            while (_maxNumberOfPolls > 0)
             {
                 // Read Message from the dataQueue
                 BasicGetResult result = _dataQueue.Channel.BasicGet(_dataQueue.QueueName, true);
@@ -83,7 +83,7 @@ namespace Summer.Batch.Infrastructure.Item.Queue
                     // If there is no data to poll, wait for master step
                     _logger.Debug("Wait for {0} second for dataQueue, check for master part is completed or not", PollingTimeOut);
                     Thread.Sleep(TimeSpan.FromSeconds(PollingTimeOut));
-
+                    _logger.Debug("Polling of number : {0}", _maxNumberOfPolls);
                     // For the first timeout , check master step is completed
                     if (!string.IsNullOrWhiteSpace(MasterName))
                     {
@@ -109,7 +109,7 @@ namespace Summer.Batch.Infrastructure.Item.Queue
                             _logger.Debug("Need to wait for master to completed.");
                         }
                     }
-                    MaxNumberOfPolls--;
+                    _maxNumberOfPolls--;
                 }
             }
            
