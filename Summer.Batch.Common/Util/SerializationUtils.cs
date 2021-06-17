@@ -15,6 +15,7 @@
 
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Text.Json;
 
 namespace Summer.Batch.Common.Util
 {
@@ -23,51 +24,77 @@ namespace Summer.Batch.Common.Util
     /// </summary>
     public static class SerializationUtils
     {
+        ///// <summary>
+        ///// Serializes an object to a byte array.
+        ///// </summary>
+        ///// <param name="obj">The object to serialize.</param>
+        ///// <returns>A byte array representing the <paramref name="obj"/>.</returns>
+        //public static byte[] Serialize(this object obj)
+        //{
+        //    /*            JsonSerializer s = new JsonSerializer();
+        //                s.NullValueHandling = NullValueHandling.Ignore;
+        //                using (var stream = new MemoryStream())
+        //                using(StreamWriter sw = new StreamWriter(stream))
+        //                using (JsonWriter writer = new JsonTextWriter(sw))
+        //                {
+        //                    s.Serialize(writer, obj);
+        //                    return stream.GetBuffer();
+        //                }*/
+
+
+
+        //    //          return MessagePackSerializer.Serialize(obj, CompositeResolver.Instance);
+        //    /*          return MessagePackSerializer.Serialize(obj, MessagePack.Resolvers.CompositeResolver.Instance);*/
+
+        //    using (var stream = new MemoryStream())
+        //    {
+        //        var serializer = new BinaryFormatter();
+        //        serializer.Serialize(stream, obj);
+        //        return stream.GetBuffer();
+        //    }
+        //}
+
+        ///// <summary>
+        ///// Deserializes a byte array to an object.
+        ///// </summary>
+        ///// <typeparam name = "T" > &nbsp; The type of the object to deserialize to.</typeparam>
+        ///// <param name = "bytes" > The byte array to deserialize.</param>
+        ///// <returns>The deserialized object.</returns>
+        //public static T Deserialize<T>(this byte[] bytes)
+        //{
+        //    //return (T) JsonConvert.DeserializeObject<T>(System.Text.Encoding.Unicode.GetString(bytes));
+        //    //return (T) MessagePackSerializer.Deserialize<T>(bytes);
+        //    using (var stream = new MemoryStream(bytes))
+        //    {
+        //        var serializer = new BinaryFormatter();
+        //        return (T)serializer.Deserialize(stream);
+        //    }
+        //}
+
         /// <summary>
-        /// Serializes an object to a byte array.
+        /// Serialize an object into an Json string
         /// </summary>
-        /// <param name="obj">The object to serialize.</param>
-        /// <returns>A byte array representing the <paramref name="obj"/>.</returns>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="obj"></param>
+        /// <returns></returns>
         public static byte[] Serialize(this object obj)
         {
-            /*            JsonSerializer s = new JsonSerializer();
-                        s.NullValueHandling = NullValueHandling.Ignore;
-                        using (var stream = new MemoryStream())
-                        using(StreamWriter sw = new StreamWriter(stream))
-                        using (JsonWriter writer = new JsonTextWriter(sw))
-                        {
-                            s.Serialize(writer, obj);
-                            return stream.GetBuffer();
-                        }*/
-
-
-
-  //          return MessagePackSerializer.Serialize(obj, CompositeResolver.Instance);
-  /*          return MessagePackSerializer.Serialize(obj, MessagePack.Resolvers.CompositeResolver.Instance);*/
-
-                       using (var stream = new MemoryStream())
-                       {
-                           var serializer = new BinaryFormatter();
-                           serializer.Serialize(stream, obj);
-                           return stream.GetBuffer();
-                       }
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true
+            };
+            return JsonSerializer.SerializeToUtf8Bytes(obj, options);
         }
 
         /// <summary>
-        /// Deserializes a byte array to an object.
+        /// Reconstruct an object from an byte array data
         /// </summary>
-        /// <typeparam name="T">&nbsp;The type of the object to deserialize to.</typeparam>
-        /// <param name="bytes">The byte array to deserialize.</param>
-        /// <returns>The deserialized object.</returns>
-        public static T Deserialize<T>(this byte[] bytes)
+        /// <param name="xml"></param>
+        /// <returns></returns>
+        public static T Deserialize<T>(this byte[] data) where T : class
         {
-            //return (T) JsonConvert.DeserializeObject<T>(System.Text.Encoding.Unicode.GetString(bytes));
-            //return (T) MessagePackSerializer.Deserialize<T>(bytes);
-            using (var stream = new MemoryStream(bytes))
-            {
-                var serializer = new BinaryFormatter();
-                return (T) serializer.Deserialize(stream);
-            }
+            var utf8Reader = new Utf8JsonReader(data);
+            return JsonSerializer.Deserialize<T>(ref utf8Reader);
         }
     }
 }
