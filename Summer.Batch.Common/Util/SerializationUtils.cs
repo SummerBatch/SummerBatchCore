@@ -13,9 +13,20 @@
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
 
+using System;
+using System.Collections.Generic;
+using System.Configuration;
 using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text.Json;
+using System.Xml;
+using System.Xml.Serialization;
+using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Summer.Batch.Common.Util
 {
@@ -24,35 +35,45 @@ namespace Summer.Batch.Common.Util
     /// </summary>
     public static class SerializationUtils
     {
-        ///// <summary>
-        ///// Serializes an object to a byte array.
-        ///// </summary>
-        ///// <param name="obj">The object to serialize.</param>
-        ///// <returns>A byte array representing the <paramref name="obj"/>.</returns>
-        //public static byte[] Serialize(this object obj)
+
+      
+        private static readonly string assemblyName = "Deserialization:assemblyName";
+        //interface Serialize
         //{
-        //    /*            JsonSerializer s = new JsonSerializer();
-        //                s.NullValueHandling = NullValueHandling.Ignore;
-        //                using (var stream = new MemoryStream())
-        //                using(StreamWriter sw = new StreamWriter(stream))
-        //                using (JsonWriter writer = new JsonTextWriter(sw))
-        //                {
-        //                    s.Serialize(writer, obj);
-        //                    return stream.GetBuffer();
-        //                }*/
-
-
-
-        //    //          return MessagePackSerializer.Serialize(obj, CompositeResolver.Instance);
-        //    /*          return MessagePackSerializer.Serialize(obj, MessagePack.Resolvers.CompositeResolver.Instance);*/
-
-        //    using (var stream = new MemoryStream())
-        //    {
-        //        var serializer = new BinaryFormatter();
-        //        serializer.Serialize(stream, obj);
-        //        return stream.GetBuffer();
-        //    }
         //}
+
+        //interface Deserialize
+        //{
+        //}
+        /// <summary>
+        /// Serializes an object to a byte array.
+        /// </summary>
+        /// <param name = "obj" > The object to serialize.</param>
+        /// <returns>A byte array representing the <paramref name = "obj" />.</ returns >
+        public static byte[] Serialize(this object obj)
+        {
+            /*            JsonSerializer s = new JsonSerializer();
+                        s.NullValueHandling = NullValueHandling.Ignore;
+                        using (var stream = new MemoryStream())
+                        using(StreamWriter sw = new StreamWriter(stream))
+                        using (JsonWriter writer = new JsonTextWriter(sw))
+                        {
+                            s.Serialize(writer, obj);
+                            return stream.GetBuffer();
+                        }*/
+
+
+
+            //          return MessagePackSerializer.Serialize(obj, CompositeResolver.Instance);
+            /*          return MessagePackSerializer.Serialize(obj, MessagePack.Resolvers.CompositeResolver.Instance);*/
+
+            using (var stream = new MemoryStream())
+            {
+                var serializer = new BinaryFormatter();
+                serializer.Serialize(stream, obj);
+                return stream.GetBuffer();
+            }
+        }
 
         ///// <summary>
         ///// Deserializes a byte array to an object.
@@ -71,30 +92,88 @@ namespace Summer.Batch.Common.Util
         //    }
         //}
 
-        /// <summary>
-        /// Serialize an object into an Json string
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="obj"></param>
-        /// <returns></returns>
-        public static byte[] Serialize(this object obj)
+        public static T Deserialize<T>(this byte[] bytes)
         {
-            var options = new JsonSerializerOptions
+            using (var stream = new MemoryStream(bytes))
             {
-                WriteIndented = true
-            };
-            return JsonSerializer.SerializeToUtf8Bytes(obj, options);
+                var serializer = new BinaryFormatter();
+                serializer.Binder = new DeserializationBinder(GetBinderList());
+                return (T)serializer.Deserialize(stream);
+            }
         }
 
-        /// <summary>
-        /// Reconstruct an object from an byte array data
-        /// </summary>
-        /// <param name="xml"></param>
-        /// <returns></returns>
-        public static T Deserialize<T>(this byte[] data) where T : class
+        private static List<string> GetBinderList()
         {
-            var utf8Reader = new Utf8JsonReader(data);
-            return JsonSerializer.Deserialize<T>(ref utf8Reader);
+            List<string> assemblyList = new List<string>();
+            IConfiguration Configuration = GetConfigurationJson();
+            if (Configuration == null)
+            {
+                return assemblyList;
+            }
+            else
+            {
+                var list = Configuration.GetSection(assemblyName);
+
+                if (list != null)
+                {
+                    foreach (var section in list.GetChildren())
+                    {
+                        assemblyList.Add(section.Value);
+                    }
+                }
+            }
+
+            return assemblyList;
+
         }
+      
+
+        public static IConfiguration GetConfigurationJson()
+        {
+            var builder = new ConfigurationBuilder()
+                .SetBasePath(System.AppContext.BaseDirectory)
+                .AddJsonFile("appsettings.json",
+                optional: true,
+                reloadOnChange: true);
+
+            return builder.Build();
+        }
+
+        public sealed  class DeserializationBinder : SerializationBinder
+        {
+
+            public DeserializationBinder(List<string> list)
+            {
+               
+                CustomDeserializeList = list;
+            }
+
+            public List<string> CustomDeserializeList { set; get; }
+            
+            private static readonly List<string> SummerBatchCore = new List<string>() { "Summer.Batch.Common", "Summer.Batch.Core", "Summer.Batch.Data", "Summer.Batch.Extra", "Summer.Batch.Infrastructure","mscorlib" };
+            public override Type BindToType(string assemblyName, string typeName)
+            {
+                Type typeToDeserialize = null;
+                Assembly currentAssembly = Assembly.Load(assemblyName);
+                //Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
+                //List<Assembly> list = assemblies.ToList<Assembly>();
+                //var name = Assembly.GetCallingAssembly().GetName().Name;
+                //CustomDeserializeList.Add("BA_RESTART_PRE_PROCESSOR-batch");
+                //Get List of Class Name
+                string Name = currentAssembly.GetName().Name;
+                if (SummerBatchCore.Contains(Name) || (CustomDeserializeList.Count != 0 && CustomDeserializeList.Contains(Name)))
+                {
+                    //The following line of code returns the type.
+                    typeToDeserialize = Type.GetType(String.Format("{0}, {1}",typeName, Name));
+                }
+                else
+                {
+                    throw new SerializationException("Failed to deserialize. Please create appsettings.json and add assembly name into assembly section of Deserialization.");
+                }
+
+                return typeToDeserialize;
+            }
+        }
+
     }
 }
