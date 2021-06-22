@@ -155,13 +155,10 @@ namespace Summer.Batch.Common.Util
             {
                 Type typeToDeserialize = null;
                 Assembly currentAssembly = Assembly.Load(assemblyName);
-                //Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
-                //List<Assembly> list = assemblies.ToList<Assembly>();
-                //var name = Assembly.GetCallingAssembly().GetName().Name;
-                //CustomDeserializeList.Add("BA_RESTART_PRE_PROCESSOR-batch");
+ 
                 //Get List of Class Name
                 string Name = currentAssembly.GetName().Name;
-                if (SummerBatchCore.Contains(Name) || (CustomDeserializeList.Count != 0 && CustomDeserializeList.Contains(Name)))
+                if (SummerBatchCore.Contains(Name) || (CustomDeserializeList.Count != 0 && CustomDeserializeList.Any(name => Name.StartsWith(name))))
                 {
                     //The following line of code returns the type.
                     typeToDeserialize = Type.GetType(String.Format("{0}, {1}",typeName, Name));
