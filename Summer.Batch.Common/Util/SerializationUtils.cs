@@ -150,7 +150,7 @@ namespace Summer.Batch.Common.Util
 
             public List<string> CustomDeserializeList { set; get; }
             
-            private static readonly List<string> SummerBatchCore = new List<string>() { "Summer.Batch.Common", "Summer.Batch.Core", "Summer.Batch.Data", "Summer.Batch.Extra", "Summer.Batch.Infrastructure","mscorlib" };
+            private static readonly List<string> SummerBatchCore = new List<string>() { "Summer.Batch.Common", "Summer.Batch.Core", "Summer.Batch.Data", "Summer.Batch.Extra", "Summer.Batch.Infrastructure","mscorlib","System" };
             public override Type BindToType(string assemblyName, string typeName)
             {
                 Type typeToDeserialize = null;
