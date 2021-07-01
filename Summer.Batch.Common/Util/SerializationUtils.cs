@@ -150,7 +150,7 @@ namespace Summer.Batch.Common.Util
 
             public List<string> CustomDeserializeList { set; get; }
             
-            private static readonly List<string> SummerBatchCore = new List<string>() { "Summer.Batch.Common", "Summer.Batch.Core", "Summer.Batch.Data", "Summer.Batch.Extra", "Summer.Batch.Infrastructure","mscorlib","System" };
+            private static readonly List<string> SummerBatchCore = new List<string>() { "Summer.Batch.Common", "Summer.Batch.Core", "Summer.Batch.Data", "Summer.Batch.Extra", "Summer.Batch.Infrastructure","mscorlib","System", "Microsoft" };
             public override Type BindToType(string assemblyName, string typeName)
             {
                 Type typeToDeserialize = null;
@@ -158,7 +158,7 @@ namespace Summer.Batch.Common.Util
  
                 //Get List of Class Name
                 string Name = currentAssembly.GetName().Name;
-                if (SummerBatchCore.Contains(Name) || (CustomDeserializeList.Count != 0 && CustomDeserializeList.Any(name => Name.StartsWith(name))))
+                if ((SummerBatchCore.Contains(Name) || SummerBatchCore.Any(name => Name.StartsWith(name))) || (CustomDeserializeList.Count != 0 && CustomDeserializeList.Any(name => Name.StartsWith(name))))
                 {
                     //The following line of code returns the type.
                     typeToDeserialize = Type.GetType(String.Format("{0}, {1}",typeName, Name));
