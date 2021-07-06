@@ -164,7 +164,6 @@ namespace Summer.Batch.Common.Util
                 //Get List of Class Name
                 string Name = currentAssembly.GetName().Name;
                 if ((SummerBatchCore.Contains(Name) || SummerBatchCore.Any(name => Regex.IsMatch(Name, WildCardToRegular(name + "*")))) ||
-                    (CustomDeserializeList.Count != 0 && CustomDeserializeList.Any(name => Regex.IsMatch(Name, WildCardToRegular(name + "*")))) ||
                     (CustomDeserializeList.Count != 0 && CustomDeserializeList.Any(name => Regex.IsMatch(Name, WildCardToRegular(name)))))
                 {
                     //The following line of code returns the type.
