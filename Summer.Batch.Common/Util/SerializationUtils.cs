@@ -22,6 +22,7 @@ using System.Reflection;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Serialization;
 using Microsoft.Extensions.Configuration;
@@ -126,7 +127,11 @@ namespace Summer.Batch.Common.Util
             return assemblyList;
 
         }
-      
+        private static String WildCardToRegular(String value)
+        {
+            return "^" + Regex.Escape(value).Replace("\\*", ".*") + "$";
+        }
+
 
         public static IConfiguration GetConfigurationJson()
         {
@@ -158,7 +163,8 @@ namespace Summer.Batch.Common.Util
  
                 //Get List of Class Name
                 string Name = currentAssembly.GetName().Name;
-                if ((SummerBatchCore.Contains(Name) || SummerBatchCore.Any(name => Name.StartsWith(name))) || (CustomDeserializeList.Count != 0 && CustomDeserializeList.Any(name => Name.StartsWith(name))))
+                if ((SummerBatchCore.Contains(Name) || SummerBatchCore.Any(name => Regex.IsMatch(Name, WildCardToRegular(name + "*")))) ||
+                    (CustomDeserializeList.Count != 0 && CustomDeserializeList.Any(name => Regex.IsMatch(Name, WildCardToRegular(name)))))
                 {
                     //The following line of code returns the type.
                     typeToDeserialize = Type.GetType(String.Format("{0}, {1}",typeName, Name));
