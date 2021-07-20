@@ -38,8 +38,8 @@ namespace Summer.Batch.Common.Util
         /// <summary>
         /// Serializes an object to a byte array.
         /// </summary>
-        /// <param name = "obj" > The object to serialize.</param>
-        /// <returns>A byte array representing the <paramref name = "obj" />.</ returns >
+        /// <param name="obj">The object to serialize.</param>
+        /// <returns>A byte array representing the <paramref name="obj"/>.</returns>
         public static byte[] Serialize(this object obj)
         {
             /*            JsonSerializer s = new JsonSerializer();
@@ -116,30 +116,30 @@ namespace Summer.Batch.Common.Util
             return builder.Build();
         }
 
-        public sealed  class DeserializationBinder : SerializationBinder
+        public sealed class DeserializationBinder : SerializationBinder
         {
 
             public DeserializationBinder(List<string> list)
             {
-               
+
                 CustomDeserializeList = list;
             }
 
             public List<string> CustomDeserializeList { set; get; }
-            
-            private static readonly List<string> SummerBatchCore = new List<string>() { "Summer.Batch.Common", "Summer.Batch.Core", "Summer.Batch.Data", "Summer.Batch.Extra", "Summer.Batch.Infrastructure","mscorlib","System", "Microsoft" };
+
+            private static readonly List<string> SummerBatchCore = new List<string>() { "Summer.Batch.Common", "Summer.Batch.Core", "Summer.Batch.Data", "Summer.Batch.Extra", "Summer.Batch.Infrastructure", "mscorlib", "System", "Microsoft" };
             public override Type BindToType(string assemblyName, string typeName)
             {
                 Type typeToDeserialize = null;
                 Assembly currentAssembly = Assembly.Load(assemblyName);
- 
+
                 //Get List of Class Name
                 string Name = currentAssembly.GetName().Name;
                 if ((SummerBatchCore.Contains(Name) || SummerBatchCore.Any(name => Regex.IsMatch(Name, WildCardToRegular(name + "*")))) ||
                     (CustomDeserializeList.Count != 0 && CustomDeserializeList.Any(name => Regex.IsMatch(Name, WildCardToRegular(name)))))
                 {
                     //The following line of code returns the type.
-                    typeToDeserialize = Type.GetType(String.Format("{0}, {1}",typeName, Name));
+                    typeToDeserialize = Type.GetType(String.Format("{0}, {1}", typeName, Name));
                 }
                 else
                 {
@@ -148,6 +148,32 @@ namespace Summer.Batch.Common.Util
 
                 return typeToDeserialize;
             }
+        }
+
+        /// <summary>
+        /// Serialize an object into an Json string
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="obj"></param>
+        /// <returns></returns>
+        public static byte[] SerializeObject(this object obj)
+        {
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true
+            };
+            return JsonSerializer.SerializeToUtf8Bytes(obj, options);
+        }
+
+        /// <summary>
+        /// Reconstruct an object from an byte array data
+        /// </summary>
+        /// <param name="xml"></param>
+        /// <returns></returns>
+        public static T DeserializeObject<T>(byte[] data) where T : class
+        {
+            var utf8Reader = new Utf8JsonReader(data);
+            return JsonSerializer.Deserialize<T>(ref utf8Reader);
         }
 
     }
