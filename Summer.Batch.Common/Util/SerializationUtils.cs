@@ -23,11 +23,7 @@ using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using System.Xml;
-using System.Xml.Serialization;
 using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace Summer.Batch.Common.Util
 {
@@ -37,15 +33,8 @@ namespace Summer.Batch.Common.Util
     public static class SerializationUtils
     {
 
-      
         private static readonly string assemblyName = "Deserialization:assemblyName";
-        //interface Serialize
-        //{
-        //}
 
-        //interface Deserialize
-        //{
-        //}
         /// <summary>
         /// Serializes an object to a byte array.
         /// </summary>
@@ -75,23 +64,6 @@ namespace Summer.Batch.Common.Util
                 return stream.GetBuffer();
             }
         }
-
-        ///// <summary>
-        ///// Deserializes a byte array to an object.
-        ///// </summary>
-        ///// <typeparam name = "T" > &nbsp; The type of the object to deserialize to.</typeparam>
-        ///// <param name = "bytes" > The byte array to deserialize.</param>
-        ///// <returns>The deserialized object.</returns>
-        //public static T Deserialize<T>(this byte[] bytes)
-        //{
-        //    //return (T) JsonConvert.DeserializeObject<T>(System.Text.Encoding.Unicode.GetString(bytes));
-        //    //return (T) MessagePackSerializer.Deserialize<T>(bytes);
-        //    using (var stream = new MemoryStream(bytes))
-        //    {
-        //        var serializer = new BinaryFormatter();
-        //        return (T)serializer.Deserialize(stream);
-        //    }
-        //}
 
         public static T Deserialize<T>(this byte[] bytes)
         {
