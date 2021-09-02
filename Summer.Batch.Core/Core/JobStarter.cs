@@ -18,6 +18,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using NLog;
 using Summer.Batch.Core.Core.Unity.Xml;
 using Summer.Batch.Core.Explore;
@@ -259,7 +260,7 @@ namespace Summer.Batch.Core
             /// </summary>
             InvalidOption = 2
         }
-        public static JobExecution WorkerStart(string xmlJobFile, string hostName, UnityLoader loader)
+        public static JobExecution WorkerStart(string xmlJobFile, string hostName, UnityLoader loader, int workerUpdateTimeInterval = 15)
         {
 
             ControlQueue _controlQueue = GetControlQueue(controlQueueName, hostName);
@@ -267,7 +268,8 @@ namespace Summer.Batch.Core
 
             int messageCount = _controlQueue.GetMessageCount();
             XmlJob job = null;
-            if (messageCount != 0)
+            TimeSpan WorkerUpdatetimeInterval = TimeSpan.FromSeconds(workerUpdateTimeInterval);
+            if(messageCount != 0)
             {
                 for (int i = 0; i < messageCount; i++)
                 {
@@ -299,9 +301,50 @@ namespace Summer.Batch.Core
             }
             else
             {
-
-                throw new JobExecutionException("No worker job provided");
+                do
+                {
+                    messageCount = _controlQueue.GetMessageCount();
+                    if (messageCount != 0)
+                    {
+                        for (int i = 0; i < messageCount; i++)
+                        {
+                            string fileName = Path.GetFileName(xmlJobFile);
+                            string message = _controlQueue.Receive(fileName);
+                            if (ValidateMessage(message)) // for 3 items
+                            {
+                                Tuple<XmlJob, string, int, bool> tuple = ValidateFileName(message, xmlJobFile);
+                                if (tuple.Item4)
+                                {
+                                    // Resend the message to the controlQueue
+                                    if (tuple.Item3 > 0)
+                                    {
+                                        _controlQueue.Send(tuple.Item2);
+                                    }
+                                    job = tuple.Item1;
+                                    Guid guid = Guid.NewGuid();
+                                    foreach (XmlStep step in job.JobElements)
+                                    {
+                                        step.RemoteChunking = new XmlRemoteChunking();
+                                        step.RemoteChunking.HostName = hostName;
+                                        step.RemoteChunking.Master = false;
+                                        step.RemoteChunking.WorkerID = guid.ToString();
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                        break;
+                    }
+                    else
+                    {
+                        Logger.Info("No master job provided. Wait for worker {0} seconds.", WorkerUpdatetimeInterval.TotalSeconds);
+                        Thread.Sleep(WorkerUpdatetimeInterval);
+                        //throw new JobExecutionException("No master job provided");
+                    }
+                } while (messageCount == 0);
             }
+           
+            
             _controlQueue.Requeue();
             loader.Job = job;
             var jobOperator = (SimpleJobOperator)BatchRuntime.GetJobOperator(loader);
