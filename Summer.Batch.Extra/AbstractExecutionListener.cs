@@ -102,9 +102,10 @@ namespace Summer.Batch.Extra
                     else
                     {
                         // clean all message queues when no work job provided
-                        Logger.Info("Clean message in the Queue.");
+                        Exception e = new JobExecutionException("No worker job provided");
+                        Logger.Error(e, "Clean message in the Queue.");
                         stepExecution.remoteChunking.CleanAllQueue();
-                        throw new JobExecutionException("No worker job provided");
+                        throw e;
                     }
                 }
                 else // worker step create control thread 
@@ -159,12 +160,16 @@ namespace Summer.Batch.Extra
                         // wait for Master method send back signal
                         if (!stepExecution.remoteChunking.threadWait.WaitOne(-1))
                         {
-                            throw new JobExecutionException("Master step failed");
+                            Exception e = new JobExecutionException("Master step failed");
+                            Logger.Error(e, "Clean message in the Queue.");
+                            throw e;
                         }
                         // some worker failed master need to fail 
                         if ("FAILED".Equals(stepExecution.ExitStatus.ExitCode))
                         {
-                            throw new JobExecutionException("Master step failed");
+                            Exception e = new JobExecutionException("Master step failed");
+                            Logger.Error(e, "Clean message in the Queue.");
+                            throw e;
                         }
 
                         // clean all message queues when master completed 
