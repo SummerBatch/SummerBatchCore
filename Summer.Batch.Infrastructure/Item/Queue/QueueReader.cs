@@ -20,6 +20,7 @@ namespace Summer.Batch.Infrastructure.Item.Queue
         private DataQueue _dataQueue;
         private const string dot = ".";
         private int _maxNumberOfPolls;
+        private ControlQueue _masterqueue;
         /// <summary>
         /// Timeout for polling data
         /// </summary>
@@ -87,12 +88,16 @@ namespace Summer.Batch.Infrastructure.Item.Queue
                     // For the first timeout , check master step is completed
                     if (!string.IsNullOrWhiteSpace(MasterName))
                     {
-                        ControlQueue _masterqueue = new ControlQueue();
-                        QueueConnectionProvider queueConnectionProvider = new QueueConnectionProvider();
-                        queueConnectionProvider.HostName = _dataQueue.HostName;
-                        _masterqueue.ConnectionProvider = queueConnectionProvider;
-                        _masterqueue.QueueName = "master";
-                        _masterqueue.CreateQueue();
+                        if(_masterqueue == null)
+                        {
+                            _masterqueue = new ControlQueue();
+                            QueueConnectionProvider queueConnectionProvider = new QueueConnectionProvider();
+                            queueConnectionProvider.HostName = _dataQueue.HostName;
+                            _masterqueue.ConnectionProvider = queueConnectionProvider;
+                            _masterqueue.QueueName = "master";
+                            _masterqueue.CreateQueue();
+                        }
+                       
 
                         string MasterCompletedMessage = "master" + dot + MasterName + dot + "COMPLETED";
 
