@@ -14,6 +14,18 @@ namespace Summer.Batch.Core.Core.Unity.Xml
         public string HostName { get; set; } = "localhost";
 
         /// <summary>
+        /// username attribute.
+        /// </summary>
+        [XmlAttribute("username")]
+        public string UserName { get; set; } = "admin";
+
+        /// <summary>
+        /// password attribute.
+        /// </summary>
+        [XmlAttribute("password")]
+        public string PassWord { get; set; } = "admin";
+
+        /// <summary>
         /// master attribute.
         /// </summary>
         [XmlAttribute("master")]

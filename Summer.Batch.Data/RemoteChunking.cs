@@ -11,7 +11,7 @@ namespace Summer.Batch.Data
         /// <summary>
         /// server of message queue
         /// </summary>
-        private string _hostname;
+        private string _hostname, _username, _password;
 
         private const string ControlQueue = "control";
 
@@ -102,9 +102,11 @@ namespace Summer.Batch.Data
             get { return _thread; }
         }
 
-        public RemoteChunking(string hostname, bool master)
+        public RemoteChunking(string hostname, string username, string password, bool master)
         {
             _hostname = hostname;
+            _username = username;
+            _password = password;
             _master = master;
             _controlQueue = CreateQueue(ControlQueue);
             _masterQueue = CreateQueue(MasterQueue);
@@ -135,6 +137,8 @@ namespace Summer.Batch.Data
             }
 
             QueueConnectionProvider queueConnectionProvider = new QueueConnectionProvider();
+            queueConnectionProvider.UserName = _username;
+            queueConnectionProvider.PassWord = _password;
             queueConnectionProvider.HostName = _hostname;
             ControlQueue controlQueue = new ControlQueue();
             controlQueue.ConnectionProvider = queueConnectionProvider;

@@ -81,7 +81,7 @@ namespace Summer.Batch.Core.Unity
                 // To determine the master step and create remotechunking inject to the stepexecution
                 if (_step.RemoteChunking != null)
                 {
-                    RemoteChunking remoteChunking = new RemoteChunking(_step.RemoteChunking.HostName, _step.RemoteChunking.Master);
+                    RemoteChunking remoteChunking = new RemoteChunking(_step.RemoteChunking.HostName, _step.RemoteChunking.UserName, _step.RemoteChunking.PassWord, _step.RemoteChunking.Master);
 
                     // set worker configuration in the master
                     if (_step.RemoteChunking.Master)

@@ -7,17 +7,60 @@ namespace Summer.Batch.Data
 {
     public class QueueConnectionProvider
     {
-        private string _hostname;
+        
+        private string _hostname, _username, _password;
 
+        /// <summary>
+        /// username attribute for connection
+        /// </summary>
+        public string UserName 
+        {
+            get
+            {
+                return _username;
+            }
+
+            set
+            {
+                this._username = value;
+            }
+        }
+
+        /// <summary>
+        /// password attribute for connection
+        /// </summary>
+        public string PassWord 
+        {
+            get
+            {
+                return _password;
+            }
+
+            set
+            {
+                this._password = value;
+            }
+        }
+        
+        /// <summary>
+        /// server of connection
+        /// </summary>
         public string HostName
         {
             set
             {
                 _hostname = value;
-                ConnectionFactory = new ConnectionFactory { HostName = _hostname, Password = "admin", UserName = "admin" };
-                Connection = ConnectionFactory.CreateConnection();
-                Channel = Connection.CreateModel();
 
+                if (!string.IsNullOrWhiteSpace(_username) && !string.IsNullOrWhiteSpace(_password) && !string.IsNullOrWhiteSpace(_hostname))
+                {
+                    ConnectionFactory = new ConnectionFactory { HostName = _hostname, Password = _username, UserName = _password };
+                    Connection = ConnectionFactory.CreateConnection();
+                    Channel = Connection.CreateModel();
+                }
+                else
+                {
+                    throw new ArgumentNullException("UserName, PassWord ,and HostName need to provide.");
+                }
             }
             get
             {

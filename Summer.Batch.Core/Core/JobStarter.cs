@@ -260,10 +260,10 @@ namespace Summer.Batch.Core
             /// </summary>
             InvalidOption = 2
         }
-        public static JobExecution WorkerStart(string xmlJobFile, string hostName, UnityLoader loader, int workerUpdateTimeInterval = 15)
+        public static JobExecution WorkerStart(string xmlJobFile, UnityLoader loader, string hostName, string username = "admin" , string password = "admin", int workerUpdateTimeInterval = 15)
         {
 
-            ControlQueue _controlQueue = GetControlQueue(controlQueueName, hostName);
+            ControlQueue _controlQueue = GetControlQueue(controlQueueName, hostName, username, password);
 
 
             int messageCount = _controlQueue.GetMessageCount();
@@ -353,11 +353,13 @@ namespace Summer.Batch.Core
             return jobOperator.JobExplorer.GetJobExecution((long)executionId);
         }
 
-        private static ControlQueue GetControlQueue(string queuename, string hostname)
+        private static ControlQueue GetControlQueue(string queuename, string hostname, string username, string password)
         {
             try
             {
                 QueueConnectionProvider queueConnectionProvider = new QueueConnectionProvider();
+                queueConnectionProvider.UserName = username;
+                queueConnectionProvider.PassWord = password;
                 queueConnectionProvider.HostName = hostname;
                 ControlQueue _controlQueue = new ControlQueue();
                 _controlQueue.ConnectionProvider = queueConnectionProvider;

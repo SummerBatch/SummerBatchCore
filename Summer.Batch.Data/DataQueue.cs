@@ -7,7 +7,12 @@ namespace Summer.Batch.Data
 {
     public class DataQueue
     {
-        public string HostName { get; set; }
+        public string HostName { get; set; } = "localhost";
+
+        public string UserName { get; set; } = "admin";
+
+        public string PassWord { get; set; } = "admin";
+
         public string QueueName { get; set; }
 
         public bool Durable { get; set; }
@@ -25,13 +30,13 @@ namespace Summer.Batch.Data
         /// </summary>
         public void CreateQueue()
         {
-            if (string.IsNullOrEmpty(QueueName) || string.IsNullOrEmpty(HostName))
+            if (string.IsNullOrEmpty(QueueName) || string.IsNullOrEmpty(HostName) || string.IsNullOrEmpty(UserName) || string.IsNullOrEmpty(PassWord))
             {
-                throw new ArgumentNullException("QueueName and HostName need to provide.");
+                throw new ArgumentNullException("QueueName, HostName, UserName, and PassWord need to provide.");
             }
             else
             {
-                ConnectionFactory connectionFactory = new ConnectionFactory() { HostName = HostName, Password = "admin", UserName = "admin" };
+                ConnectionFactory connectionFactory = new ConnectionFactory() { HostName = HostName, Password = UserName, UserName = PassWord };
                 IConnection connection = connectionFactory.CreateConnection();
                 Channel = connection.CreateModel();
                 Channel.QueueDeclare(QueueName, Durable, Exclusive, AutoDelete, Arguments);

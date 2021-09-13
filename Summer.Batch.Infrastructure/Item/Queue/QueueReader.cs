@@ -92,6 +92,8 @@ namespace Summer.Batch.Infrastructure.Item.Queue
                         {
                             _masterqueue = new ControlQueue();
                             QueueConnectionProvider queueConnectionProvider = new QueueConnectionProvider();
+                            queueConnectionProvider.UserName = _dataQueue.UserName;
+                            queueConnectionProvider.PassWord = _dataQueue.PassWord;
                             queueConnectionProvider.HostName = _dataQueue.HostName;
                             _masterqueue.ConnectionProvider = queueConnectionProvider;
                             _masterqueue.QueueName = "master";
