@@ -21,6 +21,7 @@ using Summer.Batch.Core.Step.Builder;
 using Summer.Batch.Core.Unity.Xml;
 using Summer.Batch.Common.TaskExecution;
 using Summer.Batch.Infrastructure.Item;
+using Summer.Batch.Data;
 
 namespace Summer.Batch.Core.Unity
 {
@@ -76,6 +77,37 @@ namespace Summer.Batch.Core.Unity
                 var builder = new SimpleStepBuilder(_container, _step.Id, inType, outType, Int32.Parse(_step.DelayConfig))
                      .Reader(_step.Chunk.Reader.Ref)
                     .Writer(_step.Chunk.Writer.Ref);
+
+                // To determine the master step and create remotechunking inject to the stepexecution
+                if (_step.RemoteChunking != null)
+                {
+                    RemoteChunking remoteChunking = new RemoteChunking(_step.RemoteChunking.HostName, _step.RemoteChunking.UserName, _step.RemoteChunking.PassWord, _step.RemoteChunking.Master);
+
+                    // set worker configuration in the master
+                    if (_step.RemoteChunking.Master)
+                    {
+                        remoteChunking.WorkerFileName = _step.RemoteChunking.WorkerFileName;
+                        remoteChunking.WorkerMaxNumber = int.Parse(_step.RemoteChunking.WorkerMaxNumber);
+                        
+                    }
+                    else // worker 
+                    {
+                        // set worker id into the remotechunking object
+                        if (!string.IsNullOrEmpty(_step.RemoteChunking.WorkerID))
+                        {
+                            remoteChunking.WorkerID = _step.RemoteChunking.WorkerID;
+                        }
+                    }
+
+                    remoteChunking.MaxMasterWaitWorkerRetry = int.Parse(_step.RemoteChunking.MaxMasterWaitWorkerRetry);
+                    remoteChunking.MaxMasterWaitWorkerSecond = int.Parse(_step.RemoteChunking.MaxMasterWaitWorkerSecond);
+                    remoteChunking.RemoteChunkingTimoutSecond = TimeSpan.FromSeconds(int.Parse(_step.RemoteChunking.RemoteChunkingTimoutSecond));
+
+                    builder = new SimpleStepBuilder(_container, _step.Id, inType, outType, Int32.Parse(_step.DelayConfig), remoteChunking)
+                                    .Reader(_step.Chunk.Reader.Ref)
+                                    .Writer(_step.Chunk.Writer.Ref);
+                }
+
                 if (_step.Chunk.Processor != null && !string.IsNullOrEmpty(_step.Chunk.Processor.Ref))
                 {
                     builder.Processor(_step.Chunk.Processor.Ref);

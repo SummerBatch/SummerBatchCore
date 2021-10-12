@@ -44,6 +44,7 @@ using Summer.Batch.Infrastructure.Repeat;
 using Summer.Batch.Infrastructure.Repeat.Policy;
 using Summer.Batch.Infrastructure.Repeat.Support;
 using Summer.Batch.Common.Util;
+using Summer.Batch.Data;
 
 namespace Summer.Batch.Core.Step.Builder
 {
@@ -67,7 +68,7 @@ namespace Summer.Batch.Core.Step.Builder
 
         private readonly Type _inType;
         private readonly Type _outType;
-
+        private ControlQueue _controlQueue;
         /// <summary>
         /// Default constructor.
         /// </summary>
@@ -84,6 +85,13 @@ namespace Summer.Batch.Core.Step.Builder
 
         public SimpleStepBuilder(IUnityContainer container, string name, Type inType, Type outType, int delayConfig)
             : base(container, name, delayConfig)
+        {
+            _inType = inType;
+            _outType = outType;
+        }
+
+        public SimpleStepBuilder(IUnityContainer container, string name, Type inType, Type outType, int delayConfig, RemoteChunking remoteChunking)
+           : base(container, name, delayConfig, remoteChunking)
         {
             _inType = inType;
             _outType = outType;

@@ -13,6 +13,7 @@
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
 using System.Xml.Serialization;
+using Summer.Batch.Core.Core.Unity.Xml;
 
 namespace Summer.Batch.Core.Unity.Xml
 {
@@ -50,5 +51,13 @@ namespace Summer.Batch.Core.Unity.Xml
         /// </summary>
         [XmlAttribute("delay-config")]
         public string DelayConfig { get; set; } = "10";
+
+
+        /// <summary>
+        /// remotechunking
+        /// </summary>
+        [XmlElement("remote-chunking")]
+        public XmlRemoteChunking RemoteChunking { get; set; }
+
     }
 }

@@ -41,6 +41,7 @@ using Summer.Batch.Infrastructure.Repeat;
 using Summer.Batch.Infrastructure.Repeat.Exception;
 using Summer.Batch.Infrastructure.Repeat.Support;
 using Summer.Batch.Common.TaskExecution;
+using Summer.Batch.Data;
 
 namespace Summer.Batch.Core.Step.Builder
 {
@@ -72,6 +73,11 @@ namespace Summer.Batch.Core.Step.Builder
 
         protected AbstractTaskletStepBuilder(IUnityContainer container, string name, int delayConfig)
            : base(container, name, delayConfig)
+        {
+        }
+
+        protected AbstractTaskletStepBuilder(IUnityContainer container, string name, int delayConfig, RemoteChunking remoteChunking)
+           : base(container, name, delayConfig, remoteChunking)
         {
         }
 

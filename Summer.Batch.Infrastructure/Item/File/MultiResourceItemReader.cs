@@ -48,13 +48,13 @@ namespace Summer.Batch.Infrastructure.Item.File
     public class MultiResourceItemReader<T> : ItemStreamSupport, IItemStreamReader<T> where T : class
     {
         private const string ResourceKey = "resourceIndex";
-        private const string ResourceMap = "batch.resourcesMap";
+
         private readonly Logger _logger = LogManager.GetCurrentClassLogger();
-        private ExecutionContext context;
+
         private int _currentResource = -1;
 
         private bool _noInput;
-        private Dictionary<string, IList<T>> _resourcesMap;
+
         /// <summary>
         /// Delegate stream.
         /// </summary>
@@ -63,7 +63,7 @@ namespace Summer.Batch.Infrastructure.Item.File
         /// <summary>
         /// Collection of used resources.
         /// </summary>
-        public IList<IResource> Resources { get; set; }
+        public IResource[] Resources { get; set; }
 
         /// <summary>
         /// Save state.
@@ -85,7 +85,7 @@ namespace Summer.Batch.Infrastructure.Item.File
         /// </summary>
         public IResource CurrentResource
         {
-            get { return _currentResource < 0 || _currentResource >= Resources.Count ? null : Resources[_currentResource]; }
+            get { return _currentResource < 0 || _currentResource >= Resources.Length ? null : Resources[_currentResource]; }
         }
 
         /// <summary>
@@ -93,7 +93,7 @@ namespace Summer.Batch.Infrastructure.Item.File
         /// </summary>
         public MultiResourceItemReader()
         {
-            Name = typeof(MultiResourceItemReader<T>).Name;
+            Name = typeof (MultiResourceItemReader<T>).Name;
             Comparer = new DefaultComparer();
             SaveState = true;
         }
@@ -106,7 +106,7 @@ namespace Summer.Batch.Infrastructure.Item.File
         {
             Assert.NotNull(Resources, "resources must be set");
 
-            if (Resources.Count == 0)
+            if (Resources.Length == 0)
             {
                 if (Strict)
                 {
@@ -117,9 +117,8 @@ namespace Summer.Batch.Infrastructure.Item.File
                 return;
             }
 
-            IResource[] resources = new List<IResource>(Resources).ToArray();
-            Array.Sort(resources, Comparer);
-            
+            Array.Sort(Resources, Comparer);
+
             if (executionContext.ContainsKey(GetExecutionContextKey(ResourceKey)))
             {
                 _currentResource = executionContext.GetInt(GetExecutionContextKey(ResourceKey));
@@ -127,22 +126,12 @@ namespace Summer.Batch.Infrastructure.Item.File
                 {
                     _currentResource = 0;
                 }
+
                 Delegate.Resource = Resources[_currentResource];
-                Delegate.Open(executionContext);
-                context = executionContext;
-                if (context.ContainsKey(ResourceMap))
-                {
-                    _resourcesMap = (Dictionary<string, IList<T>>)context.Get(ResourceMap);
-                }
-                else
-                {
-                    _resourcesMap = new Dictionary<string, IList<T>>();
-                }
-                
+                Delegate.Open(new ExecutionContext());
             }
             else
             {
-                _resourcesMap = new Dictionary<string, IList<T>>();
                 _currentResource = -1;
             }
         }
@@ -164,7 +153,6 @@ namespace Summer.Batch.Infrastructure.Item.File
         {
             if (SaveState)
             {
-                context = executionContext;
                 executionContext.PutInt(GetExecutionContextKey(ResourceKey), _currentResource);
                 Delegate.Update(executionContext);
             }
@@ -196,7 +184,6 @@ namespace Summer.Batch.Infrastructure.Item.File
                 Delegate.Open(new ExecutionContext());
             }
 
-            
             return ReadNextItem();
         }
 
@@ -208,31 +195,11 @@ namespace Summer.Batch.Infrastructure.Item.File
         {
             var item = Delegate.Read();
 
-            if (item != null)
-            {
-                if (CurrentResource != null)
-                {
-                    string fileName = CurrentResource.GetFileInfo().Name;
-                    context.Put(ResourceMap, _resourcesMap);
-                    if (_resourcesMap.ContainsKey(fileName))
-                    {
-                        _resourcesMap[fileName].Add(item);
-                    }
-                    else
-                    {
-                        List<T> objectList = new List<T>();
-                        objectList.Add(item);
-                        _resourcesMap.Add(fileName, objectList);
-                    }
-                    context.Put(ResourceMap, _resourcesMap);
-                }
-            }
-
             while (item == null)
             {
                 _currentResource++;
 
-                if (_currentResource >= Resources.Count)
+                if (_currentResource >= Resources.Length)
                 {
                     break;
                 }
@@ -240,28 +207,10 @@ namespace Summer.Batch.Infrastructure.Item.File
                 Delegate.Close();
                 Delegate.Resource = Resources[_currentResource];
                 Delegate.Open(new ExecutionContext());
+
                 item = Delegate.Read();
-                if (item != null)
-                {
-                    if (CurrentResource != null)
-                    {
-                        string fileName = CurrentResource.GetFileInfo().Name;
-                        if (_resourcesMap.ContainsKey(fileName))
-                        {
-                            _resourcesMap[fileName].Add(item);
-                        }
-                        else
-                        {
-                            List<T> objectList = new List<T>();
-                            objectList.Add(item);
-                            _resourcesMap.Add(fileName, objectList);
-                        }
-                        context.Put(ResourceMap, _resourcesMap);
-                    }
-                }
             }
 
-            base.Update(context);
             return item;
         }
 
